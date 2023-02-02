@@ -82,8 +82,6 @@ class UsersApiClient
         $users    = [];
 
         foreach ($response as $userData) {
-            error_log(var_export($userData, true));
-
             $user = new UserEntity();
             $user
                 ->setId($userData['id'])
