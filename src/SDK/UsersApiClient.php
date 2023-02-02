@@ -81,7 +81,7 @@ class UsersApiClient
         $response = json_decode($response->getBody()->getContents(), true);
         $users    = [];
 
-        foreach ($response as $userData) {
+        foreach ($response['_embedded']['users'] as $userData) {
             $user = new UserEntity();
             $user
                 ->setId($userData['id'])
