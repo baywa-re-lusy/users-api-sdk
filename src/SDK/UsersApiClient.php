@@ -4,7 +4,6 @@ namespace BayWaReLusy\UsersAPI\SDK;
 
 use BayWaReLusy\UserManagement\UserEntity;
 use GuzzleHttp\Client as HttpClient;
-use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\RequestOptions;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
@@ -86,17 +85,13 @@ class UsersApiClient
             error_log(var_export($userData, true));
 
             $user = new UserEntity();
-//            $user
-//                ->setId($userData['id'])
-//                ->setUsername($userData['username'])
-//                ->setEmailVerified($userData['emailVerified'])
-//                ->setEmail($userData['email'])
-//                ->setCreated($created);
-////                ->setPicture($auth0User['picture'])
-////                ->setLastUpdate($lastUpdate ?: null)
-////                ->setLastLogin($lastLogin ?: null);
-//
-//            $this->getUserRoles($user);
+            $user
+                ->setId($userData['id'])
+                ->setUsername($userData['username'])
+                ->setEmail($userData['email'])
+                ->setEmailVerified($userData['emailVerified'])
+                ->setCreated(\DateTime::createFromFormat(\DateTimeInterface::RFC3339, $userData['created']))
+                ->setRoles($userData['roles']);
 
             $users[] = $user;
         }
