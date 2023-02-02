@@ -1,0 +1,24 @@
+{
+    "name": "baywa-re-lusy/users-api-sdk",
+    "description": "BayWa r.e. LUSY Users API SDK",
+    "type": "library",
+    "license": "proprietary",
+    "homepage": "https://github.com/baywa-re-lusy/users-api-sdk",
+    "require": {
+        "php": ">= 8.1",
+        "ext-curl": "*",
+        "guzzlehttp/guzzle": "^7.5",
+        "psr/cache": "^3.0",
+        "baywa-re-lusy/user-management": "^3.0",
+        "psr/log": "^3.0"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.7",
+        "phpstan/phpstan": "^1.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "BayWaReLusy\\UsersAPI\\SDK\\": "src/SDK/"
+        }
+    }
+}
