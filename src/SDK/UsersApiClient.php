@@ -2,7 +2,6 @@
 
 namespace BayWaReLusy\UsersAPI\SDK;
 
-use BayWaReLusy\UserManagement\UserEntity;
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\RequestOptions;
 use Psr\Cache\CacheItemPoolInterface;
@@ -70,6 +69,40 @@ class UsersApiClient
      * @throws UsersApiException
      */
     public function getUsers(): array
+    {
+        try {
+            $response = $this->getHttpClient()->get($this->usersApiUrl);
+        } catch (\Throwable $e) {
+            $this->logger?->error($e->getMessage());
+            throw new UsersApiException("Couldn't retrieve the list of Users.");
+        }
+
+        $response = json_decode($response->getBody()->getContents(), true);
+        $users    = [];
+
+        foreach ($response['_embedded']['users'] as $userData) {
+            $user = new UserEntity();
+            $user
+                ->setId($userData['id'])
+                ->setUsername($userData['username'])
+                ->setEmail($userData['email'])
+                ->setEmailVerified($userData['emailVerified'])
+                ->setCreated(\DateTime::createFromFormat(\DateTimeInterface::RFC3339, $userData['created']))
+                ->setRoles($userData['roles']);
+
+            $users[] = $user;
+        }
+
+        return $users;
+    }
+
+    /**
+     * Get the list of Subsidiaries.
+     *
+     * @return UserEntity[]
+     * @throws UsersApiException
+     */
+    public function getSubsidiaries(): array
     {
         try {
             $response = $this->getHttpClient()->get($this->usersApiUrl);

@@ -9,7 +9,7 @@
         "ext-curl": "*",
         "guzzlehttp/guzzle": "^7.5",
         "psr/cache": "^1.0",
-        "baywa-re-lusy/user-management": "^3.0",
+        "baywa-re-lusy/user-management": "dev-feature/subsidiaries",
         "psr/log": "^1.0"
     },
     "require-dev": {
