@@ -11,6 +11,7 @@ class UsersApiClient
 {
     public function __construct(
         protected string $usersApiUrl,
+        protected string $subsidiariesApiUrl,
         protected string $tokenUrl,
         protected string $clientId,
         protected string $clientSecret,
@@ -21,7 +22,6 @@ class UsersApiClient
 
     /**
      * @return HttpClient
-     * @throws UsersApiException
      */
     protected function getHttpClient(): HttpClient
     {
@@ -99,34 +99,30 @@ class UsersApiClient
     /**
      * Get the list of Subsidiaries.
      *
-     * @return UserEntity[]
+     * @return SubsidiaryEntity[]
      * @throws UsersApiException
      */
     public function getSubsidiaries(): array
     {
         try {
-            $response = $this->getHttpClient()->get($this->usersApiUrl);
+            $response = $this->getHttpClient()->get($this->subsidiariesApiUrl);
         } catch (\Throwable $e) {
             $this->logger?->error($e->getMessage());
-            throw new UsersApiException("Couldn't retrieve the list of Users.");
+            throw new UsersApiException("Couldn't retrieve the list of Subsidiaries.");
         }
 
-        $response = json_decode($response->getBody()->getContents(), true);
-        $users    = [];
+        $response     = json_decode($response->getBody()->getContents(), true);
+        $subsidiaries = [];
 
-        foreach ($response['_embedded']['users'] as $userData) {
-            $user = new UserEntity();
-            $user
-                ->setId($userData['id'])
-                ->setUsername($userData['username'])
-                ->setEmail($userData['email'])
-                ->setEmailVerified($userData['emailVerified'])
-                ->setCreated(\DateTime::createFromFormat(\DateTimeInterface::RFC3339, $userData['created']))
-                ->setRoles($userData['roles']);
+        foreach ($response['_embedded']['subsidiaries'] as $subsidiaryData) {
+            $subsidiary = new SubsidiaryEntity();
+            $subsidiary
+                ->setId($subsidiaryData['id'])
+                ->setName($subsidiaryData['name']);
 
-            $users[] = $user;
+            $subsidiaries[] = $subsidiary;
         }
 
-        return $users;
+        return $subsidiaries;
     }
 }
