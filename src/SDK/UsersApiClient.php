@@ -5,6 +5,7 @@ namespace BayWaReLusy\UsersAPI\SDK;
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\RequestOptions;
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 
 class UsersApiClient
@@ -22,6 +23,7 @@ class UsersApiClient
 
     /**
      * @return HttpClient
+     * @throws UsersApiException
      */
     protected function getHttpClient(): HttpClient
     {
@@ -56,7 +58,7 @@ class UsersApiClient
                 'Authorization' => sprintf("Bearer %s", $accessToken),
                 'Accept'        => 'application/json',
             ]]);
-        } catch (\Throwable $e) {
+        } catch (\Throwable | InvalidArgumentException $e) {
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't connect to Users API.");
         }

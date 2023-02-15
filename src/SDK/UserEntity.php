@@ -2,12 +2,10 @@
 
 namespace BayWaReLusy\UsersAPI\SDK;
 
-use BayWaReLusy\UserManagement\UserInterface;
-
 /**
  * Class UserEntity
  */
-class UserEntity implements UserInterface
+class UserEntity
 {
     protected string $id;
     protected string $username;
