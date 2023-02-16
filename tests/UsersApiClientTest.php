@@ -249,6 +249,40 @@ class UsersApiClientTest extends TestCase
         $this->instance->getUsers();
     }
 
+    public function testGetUsers_UserGetException(): void
+    {
+        // Mock the Cache hit for the access token call
+        $cacheItemMock = $this->createMock(CacheItemInterface::class);
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(true));
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('set');
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('get')
+            ->willReturn($this->returnValue('access-token'));
+
+        $this->cacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiAccessToken')
+            ->will($this->returnValue($cacheItemMock));
+        $this->cacheMock
+            ->expects($this->never())
+            ->method('save');
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(new ClientException('user get exception'));
+
+        $this->expectException(UsersApiException::class);
+
+        // Execute the call
+        $this->instance->getUsers();
+    }
+
     public function testGetSubsidiaries_TokenHit(): void
     {
         // Mock the Cache hit for the access token call
@@ -373,5 +407,39 @@ class UsersApiClientTest extends TestCase
 
         $this->assertEquals('Subsidiary 1', $subsidiaries[0]->getName());
         $this->assertEquals('Subsidiary 2', $subsidiaries[1]->getName());
+    }
+
+    public function testGetUsers_SubsidiaryGetException(): void
+    {
+        // Mock the Cache hit for the access token call
+        $cacheItemMock = $this->createMock(CacheItemInterface::class);
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(true));
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('set');
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('get')
+            ->willReturn($this->returnValue('access-token'));
+
+        $this->cacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiAccessToken')
+            ->will($this->returnValue($cacheItemMock));
+        $this->cacheMock
+            ->expects($this->never())
+            ->method('save');
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(new ClientException('subsidiary get exception'));
+
+        $this->expectException(UsersApiException::class);
+
+        // Execute the call
+        $this->instance->getSubsidiaries();
     }
 }
