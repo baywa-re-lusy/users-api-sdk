@@ -11,6 +11,12 @@ use Psr\Http\Client\ClientInterface as HttpClient;
 
 class UsersApiClient
 {
+    protected const CACHE_KEY_API_TOKEN    = 'usersApiAccessToken';
+    protected const CACHE_KEY_USERS        = 'usersApiUsers';
+    protected const CACHE_KEY_SUBSIDIARIES = 'usersApiSubsidiaries';
+    protected const CACHE_TTL_USERS        = 60;
+    protected const CACHE_TTL_SUBSIDIARIES = 86400;
+
     protected ?string $accessToken = null;
     protected RequestFactory $requestFactory;
 
@@ -20,7 +26,8 @@ class UsersApiClient
         protected string $tokenUrl,
         protected string $clientId,
         protected string $clientSecret,
-        protected CacheItemPoolInterface $cacheService,
+        protected CacheItemPoolInterface $tokenCacheService,
+        protected CacheItemPoolInterface $userCacheService,
         protected HttpClient $httpClient,
         protected ?LoggerInterface $logger = null,
     ) {
@@ -28,17 +35,21 @@ class UsersApiClient
     }
 
     /**
+     * Get a token for the Users API.
+     *
      * @throws UsersApiException
      */
     protected function loginToAuthServer(): void
     {
         try {
-            $cachedToken = $this->cacheService->getItem('usersApiAccessToken');
+            // Search for Users API token in Token Cache
+            $cachedToken = $this->tokenCacheService->getItem(self::CACHE_KEY_API_TOKEN);
 
-            // Get the Users API Access Token
+            // If the cached Token is valid
             if ($cachedToken->isHit()) {
                 $accessToken = $cachedToken->get();
             } else {
+                // If the cached Token isn't valid, generate a new one
                 $tokenRequest = $this->requestFactory->createRequest('POST', new Uri($this->tokenUrl));
                 $tokenRequest->getBody()->write((string)json_encode([
                     'grant_type'    => 'client_credentials',
@@ -51,11 +62,12 @@ class UsersApiClient
                 $body        = json_decode($response->getBody()->getContents(), true);
                 $accessToken = $body['access_token'];
 
+                // Cache the new Token
                 $cachedToken
                     ->set($accessToken)
                     ->expiresAfter($body['expires_in'] - 10);
 
-                $this->cacheService->save($cachedToken);
+                $this->tokenCacheService->save($cachedToken);
             }
 
             $this->accessToken = $accessToken;
@@ -74,32 +86,50 @@ class UsersApiClient
     public function getUsers(): array
     {
         try {
+            // Get the users from the cache
+            $cachedUsers = $this->userCacheService->getItem(self::CACHE_KEY_USERS);
+
+            // If the cached users are still valid, return them
+            if ($cachedUsers->isHit()) {
+                return $cachedUsers->get();
+            }
+
+            // If the cached users are no longer valid, get them from the Users API
             $this->loginToAuthServer();
             $usersRequest = $this->requestFactory->createRequest('GET', new Uri($this->usersApiUrl));
             $usersRequest->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
             $response = $this->httpClient->sendRequest($usersRequest);
-        } catch (\Throwable $e) {
+
+            $response = json_decode($response->getBody()->getContents(), true);
+            $users    = [];
+
+            foreach ($response['_embedded']['users'] as $userData) {
+                $user = new UserEntity();
+                $user
+                    ->setId($userData['id'])
+                    ->setUsername($userData['username'])
+                    ->setEmail($userData['email'])
+                    ->setEmailVerified($userData['emailVerified'])
+                    ->setCreated(\DateTime::createFromFormat(\DateTimeInterface::RFC3339, $userData['created']))
+                    ->setRoles($userData['roles']);
+
+                $users[] = $user;
+            }
+
+            // Cache the Users
+            $cachedUsers
+                ->set($users)
+                ->expiresAfter(self::CACHE_TTL_USERS);
+
+            $this->userCacheService->save($cachedUsers);
+
+            return $users;
+        } catch (\Throwable | InvalidArgumentException $e) {
+//            var_dump($e->getMessage());
+//            die('test');
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't retrieve the list of Users.");
         }
-
-        $response = json_decode($response->getBody()->getContents(), true);
-        $users    = [];
-
-        foreach ($response['_embedded']['users'] as $userData) {
-            $user = new UserEntity();
-            $user
-                ->setId($userData['id'])
-                ->setUsername($userData['username'])
-                ->setEmail($userData['email'])
-                ->setEmailVerified($userData['emailVerified'])
-                ->setCreated(\DateTime::createFromFormat(\DateTimeInterface::RFC3339, $userData['created']))
-                ->setRoles($userData['roles']);
-
-            $users[] = $user;
-        }
-
-        return $users;
     }
 
     /**
