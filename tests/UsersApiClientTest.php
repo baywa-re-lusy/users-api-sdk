@@ -4,6 +4,7 @@ namespace BayWaReLusy\UsersAPI\Test;
 
 use BayWaReLusy\UsersAPI\SDK\UserEntity;
 use BayWaReLusy\UsersAPI\SDK\UsersApiClient;
+use BayWaReLusy\UsersAPI\SDK\UsersApiException;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
@@ -12,9 +13,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
-use Psr\Http\Message\MessageInterface;
 use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UriInterface;
 use Psr\Log\LoggerInterface;
 use GuzzleHttp\Client as HttpClient;
@@ -182,5 +181,70 @@ class UsersApiClientTest extends TestCase
 
         $this->assertEquals(['role1', 'role2'], $users[0]->getRoles());
         $this->assertEquals(['role2', 'role3'], $users[1]->getRoles());
+    }
+
+    public function testGetUsers_CacheError(): void
+    {
+        // Mock the Cache hit for the access token call
+        $cacheItemMock = $this->createMock(CacheItemInterface::class);
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('isHit');
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('set');
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->cacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiAccessToken')
+            ->willThrowException(new InvalidArgumentException('cache error'));
+        $this->cacheMock
+            ->expects($this->never())
+            ->method('save');
+
+        $this->expectException(UsersApiException::class);
+
+        // Execute the call
+        $this->instance->getUsers();
+    }
+
+    public function testGetUsers_TokenRequestException(): void
+    {
+        // Mock the Cache hit for the access token call
+        $cacheItemMock = $this->createMock(CacheItemInterface::class);
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(false));
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('set');
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('expiresAfter');
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->cacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiAccessToken')
+            ->will($this->returnValue($cacheItemMock));
+        $this->cacheMock
+            ->expects($this->never())
+            ->method('save');
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(new ClientException('token request error'));
+
+        $this->expectException(UsersApiException::class);
+
+        // Execute the call
+        $this->instance->getUsers();
     }
 }
