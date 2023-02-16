@@ -17,8 +17,8 @@ use GuzzleHttp\Client as HttpClient;
 class UsersApiClientTest extends TestCase
 {
     protected UsersApiClient $instance;
-    protected MockObject|CacheItemPoolInterface $cacheMock;
-    protected MockObject|LoggerInterface $loggerMock;
+    protected MockObject $cacheMock;
+    protected MockObject $loggerMock;
     protected MockHandler $guzzleMockHandler;
 
     protected function setUp(): void
@@ -75,6 +75,55 @@ class UsersApiClientTest extends TestCase
         // Execute the call
         $users = $this->instance->getUsers();
 
+        // Verification
+        $this->validateUserProperties($users);
+    }
+
+    public function testGetUsers_TokenMiss(): void
+    {
+        // Mock the Cache hit for the access token call
+        $cacheItemMock = $this->createMock(CacheItemInterface::class);
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(false));
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('set')
+            ->with('access-token');
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->cacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiAccessToken')
+            ->will($this->returnValue($cacheItemMock));
+        $this->cacheMock
+            ->expects($this->once())
+            ->method('save')
+            ->with($cacheItemMock);
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(
+            new Response(200, [], '{"access_token": "access-token"}'),
+            new Response(200, [], (string)file_get_contents(__DIR__ . '/_files/users.json'))
+        );
+
+        // Execute the call
+        $users = $this->instance->getUsers();
+
+        // Verification
+        $this->validateUserProperties($users);
+    }
+
+    /**
+     * @param UserEntity[] $users
+     * @return void
+     */
+    protected function validateUserProperties(array $users): void
+    {
         // Check the number of returned users
         $this->assertCount(2, $users);
 
