@@ -105,7 +105,13 @@ class UsersApiClientTest extends TestCase
         $cacheItemMock
             ->expects($this->once())
             ->method('set')
-            ->with('access-token');
+            ->with('access-token')
+            ->will($this->returnSelf());
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('expiresAfter')
+            ->with(50)
+            ->will($this->returnSelf());
         $cacheItemMock
             ->expects($this->never())
             ->method('get');
@@ -122,7 +128,7 @@ class UsersApiClientTest extends TestCase
 
         // Mock the users response
         $this->guzzleMockHandler->append(
-            new Response(200, [], '{"access_token": "access-token"}'),
+            new Response(200, [], '{"access_token": "access-token", "expires_in": "60"}'),
             new Response(200, [], (string)file_get_contents(__DIR__ . '/_files/users.json'))
         );
 

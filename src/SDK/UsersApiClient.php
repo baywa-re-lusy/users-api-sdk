@@ -51,7 +51,10 @@ class UsersApiClient
                 $body        = json_decode($response->getBody()->getContents(), true);
                 $accessToken = $body['access_token'];
 
-                $cachedToken->set($accessToken);
+                $cachedToken
+                    ->set($accessToken)
+                    ->expiresAfter($body['expires_in'] - 10);
+
                 $this->cacheService->save($cachedToken);
             }
 
