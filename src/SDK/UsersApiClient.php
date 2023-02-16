@@ -2,14 +2,17 @@
 
 namespace BayWaReLusy\UsersAPI\SDK;
 
-use GuzzleHttp\Client as HttpClient;
-use GuzzleHttp\RequestOptions;
+use Laminas\Diactoros\RequestFactory;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
+use Psr\Http\Client\ClientInterface as HttpClient;
 
 class UsersApiClient
 {
+    protected ?string $accessToken = null;
+    protected RequestFactory $requestFactory;
+
     public function __construct(
         protected string $usersApiUrl,
         protected string $subsidiariesApiUrl,
@@ -17,15 +20,16 @@ class UsersApiClient
         protected string $clientId,
         protected string $clientSecret,
         protected CacheItemPoolInterface $cacheService,
-        protected ?LoggerInterface $logger = null
+        protected HttpClient $httpClient,
+        protected ?LoggerInterface $logger = null,
     ) {
+        $this->requestFactory = new RequestFactory();
     }
 
     /**
-     * @return HttpClient
      * @throws UsersApiException
      */
-    protected function getHttpClient(): HttpClient
+    protected function loginToAuthServer(): void
     {
         try {
             $cachedToken = $this->cacheService->getItem('usersApiAccessToken');
@@ -34,30 +38,23 @@ class UsersApiClient
             if ($cachedToken->isHit()) {
                 $accessToken = $cachedToken->get();
             } else {
-                $tokenClient = new HttpClient();
-                $response = $tokenClient->post(
-                    $this->tokenUrl,
-                    [
-                        RequestOptions::FORM_PARAMS =>
-                            [
-                                'grant_type'    => 'client_credentials',
-                                'client_id'     => $this->clientId,
-                                'client_secret' => $this->clientSecret,
-                                'state'         => time(),
-                            ]
-                    ]
-                );
+                $tokenRequest = $this->requestFactory->createRequest('GET', $this->tokenUrl);
+                $tokenRequest->getBody()->write((string)json_encode([
+                    'grant_type'    => 'client_credentials',
+                    'client_id'     => $this->clientId,
+                    'client_secret' => $this->clientSecret,
+                    'state'         => time(),
+                ]));
 
-                $body = json_decode($response->getBody()->getContents(), true);
+                $response    = $this->httpClient->sendRequest($tokenRequest);
+                $body        = json_decode($response->getBody()->getContents(), true);
                 $accessToken = $body['access_token'];
+
                 $cachedToken->set($accessToken);
                 $this->cacheService->save($cachedToken);
             }
 
-            return new HttpClient(['headers' => [
-                'Authorization' => sprintf("Bearer %s", $accessToken),
-                'Accept'        => 'application/json',
-            ]]);
+            $this->accessToken = $accessToken;
         } catch (\Throwable | InvalidArgumentException $e) {
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't connect to Users API.");
@@ -73,7 +70,10 @@ class UsersApiClient
     public function getUsers(): array
     {
         try {
-            $response = $this->getHttpClient()->get($this->usersApiUrl);
+            $this->loginToAuthServer();
+            $usersRequest = $this->requestFactory->createRequest('GET', $this->usersApiUrl);
+            $usersRequest->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
+            $response = $this->httpClient->sendRequest($usersRequest);
         } catch (\Throwable $e) {
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't retrieve the list of Users.");

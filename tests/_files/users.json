@@ -1,0 +1,53 @@
+{
+  "_links": {
+    "self": {
+      "href": "https://my-api.domain.com/users?page=1"
+    },
+    "first": {
+      "href": "https://my-api.domain.com/users"
+    },
+    "last": {
+      "href": "https://my-api.domain.com/users?page=1"
+    }
+  },
+  "_embedded": {
+    "users": [
+      {
+        "id": "c84056a1-8d36-46c4-ae15-e3cb3db18ed2",
+        "username": "john.doe",
+        "email": "john.doe@email.com",
+        "emailVerified": true,
+        "created": "2022-08-11T15:12:09+00:00",
+        "roles": [
+          "role1",
+          "role2"
+        ],
+        "_links": {
+          "self": {
+            "href": "https://my-api.domain.com/users/c84056a1-8d36-46c4-ae15-e3cb3db18ed2"
+          }
+        }
+      },
+      {
+        "id": "05991cfa-84a4-4c7f-9486-7d25c6119238",
+        "username": "jane.doe",
+        "email": "jane.doe@email.com",
+        "emailVerified": false,
+        "created": "2022-09-05T10:16:32+00:00",
+        "roles": [
+          "role2",
+          "role3"
+        ],
+        "_links": {
+          "self": {
+            "href": "https://my-api.domain.com/users/05991cfa-84a4-4c7f-9486-7d25c6119238"
+          }
+        }
+      }
+    ]
+  },
+  "page_count": 1,
+  "page_size": 2000,
+  "total_items": 3,
+  "page": 1
+}
