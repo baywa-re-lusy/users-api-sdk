@@ -5,7 +5,7 @@ namespace BayWaReLusy\UsersAPI\SDK;
 /**
  * Class UserEntity
  */
-class SubsidiaryEntity
+class SubsidiaryEntity implements SubsidiaryInterface
 {
     protected string $id;
     protected string $name;
