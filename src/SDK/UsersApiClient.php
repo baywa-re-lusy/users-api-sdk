@@ -111,7 +111,11 @@ class UsersApiClient
     public function getSubsidiaries(): array
     {
         try {
-            $response = $this->getHttpClient()->get($this->subsidiariesApiUrl);
+            $this->loginToAuthServer();
+
+            $subsidiariesRequest = $this->requestFactory->createRequest('GET', new Uri($this->subsidiariesApiUrl));
+            $subsidiariesRequest->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
+            $response = $this->httpClient->sendRequest($subsidiariesRequest);
         } catch (\Throwable $e) {
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't retrieve the list of Subsidiaries.");

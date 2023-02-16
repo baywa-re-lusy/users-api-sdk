@@ -2,6 +2,7 @@
 
 namespace BayWaReLusy\UsersAPI\Test;
 
+use BayWaReLusy\UsersAPI\SDK\SubsidiaryEntity;
 use BayWaReLusy\UsersAPI\SDK\UserEntity;
 use BayWaReLusy\UsersAPI\SDK\UsersApiClient;
 use BayWaReLusy\UsersAPI\SDK\UsersApiException;
@@ -246,5 +247,131 @@ class UsersApiClientTest extends TestCase
 
         // Execute the call
         $this->instance->getUsers();
+    }
+
+    public function testGetSubsidiaries_TokenHit(): void
+    {
+        // Mock the Cache hit for the access token call
+        $cacheItemMock = $this->createMock(CacheItemInterface::class);
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(true));
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('set');
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('get')
+            ->willReturn($this->returnValue('access-token'));
+
+        $this->cacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiAccessToken')
+            ->will($this->returnValue($cacheItemMock));
+        $this->cacheMock
+            ->expects($this->never())
+            ->method('save');
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(
+            new Response(200, [], (string)file_get_contents(__DIR__ . '/_files/subsidiaries.json'))
+        );
+
+        // Execute the call
+        $subsidiaries = $this->instance->getSubsidiaries();
+
+        // Verify resulting users
+        $this->validateSubsidiaryProperties($subsidiaries);
+
+        // Verify if HTTP requests have been made correctly
+        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[0]['request']);
+        $this->assertEquals('GET', $this->httpRequestHistoryContainer[0]['request']->getMethod());
+        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[0]['request']->getUri());
+        $this->assertEquals('https', $this->httpRequestHistoryContainer[0]['request']->getUri()->getScheme());
+        $this->assertEquals('my-api.domain.com', $this->httpRequestHistoryContainer[0]['request']->getUri()->getHost());
+        $this->assertEquals('/subsidiaries', $this->httpRequestHistoryContainer[0]['request']->getUri()->getPath());
+    }
+
+    public function testGetSubsidiaries_TokenMiss(): void
+    {
+        // Mock the Cache hit for the access token call
+        $cacheItemMock = $this->createMock(CacheItemInterface::class);
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(false));
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('set')
+            ->with('access-token')
+            ->will($this->returnSelf());
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('expiresAfter')
+            ->with(50)
+            ->will($this->returnSelf());
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->cacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiAccessToken')
+            ->will($this->returnValue($cacheItemMock));
+        $this->cacheMock
+            ->expects($this->once())
+            ->method('save')
+            ->with($cacheItemMock);
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(
+            new Response(200, [], '{"access_token": "access-token", "expires_in": "60"}'),
+            new Response(200, [], (string)file_get_contents(__DIR__ . '/_files/subsidiaries.json'))
+        );
+
+        // Execute the call
+        $subsidiaries = $this->instance->getSubsidiaries();
+
+        // Verification
+        $this->validateSubsidiaryProperties($subsidiaries);
+
+        // Verify if HTTP requests have been made correctly
+        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[0]['request']);
+        $this->assertEquals('POST', $this->httpRequestHistoryContainer[0]['request']->getMethod());
+        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[0]['request']->getUri());
+        $this->assertEquals('https', $this->httpRequestHistoryContainer[0]['request']->getUri()->getScheme());
+        $this->assertEquals('my-api.domain.com', $this->httpRequestHistoryContainer[0]['request']->getUri()->getHost());
+        $this->assertEquals('/token', $this->httpRequestHistoryContainer[0]['request']->getUri()->getPath());
+
+        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[1]['request']);
+        $this->assertEquals('GET', $this->httpRequestHistoryContainer[1]['request']->getMethod());
+        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[1]['request']->getUri());
+        $this->assertEquals('https', $this->httpRequestHistoryContainer[1]['request']->getUri()->getScheme());
+        $this->assertEquals('my-api.domain.com', $this->httpRequestHistoryContainer[1]['request']->getUri()->getHost());
+        $this->assertEquals('/subsidiaries', $this->httpRequestHistoryContainer[1]['request']->getUri()->getPath());
+    }
+
+    /**
+     * @param SubsidiaryEntity[] $subsidiaries
+     * @return void
+     */
+    protected function validateSubsidiaryProperties(array $subsidiaries): void
+    {
+        // Check the number of returned users
+        $this->assertCount(2, $subsidiaries);
+
+        // Check that the results are User entities
+        $this->assertInstanceOf(SubsidiaryEntity::class, $subsidiaries[0]);
+        $this->assertInstanceOf(SubsidiaryEntity::class, $subsidiaries[1]);
+
+        // Check if the properties are set correctly
+        $this->assertEquals('1', $subsidiaries[0]->getId());
+        $this->assertEquals('2', $subsidiaries[1]->getId());
+
+        $this->assertEquals('Subsidiary 1', $subsidiaries[0]->getName());
+        $this->assertEquals('Subsidiary 2', $subsidiaries[1]->getName());
     }
 }

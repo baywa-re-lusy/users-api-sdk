@@ -4,3 +4,4 @@ composer.phar
 vendor
 results
 .phpunit.result.cache
+.phpunit.cache
