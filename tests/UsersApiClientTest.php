@@ -6,11 +6,16 @@ use BayWaReLusy\UsersAPI\SDK\UserEntity;
 use BayWaReLusy\UsersAPI\SDK\UsersApiClient;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Http\Message\MessageInterface;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\UriInterface;
 use Psr\Log\LoggerInterface;
 use GuzzleHttp\Client as HttpClient;
 
@@ -20,6 +25,7 @@ class UsersApiClientTest extends TestCase
     protected MockObject $cacheMock;
     protected MockObject $loggerMock;
     protected MockHandler $guzzleMockHandler;
+    protected array $httpRequestHistoryContainer = [];
 
     protected function setUp(): void
     {
@@ -28,16 +34,17 @@ class UsersApiClientTest extends TestCase
 
         $this->guzzleMockHandler = new MockHandler();
         $handlerStack            = HandlerStack::create($this->guzzleMockHandler);
-        $client                  = new HttpClient(['handler' => $handlerStack]);
+
+        $handlerStack->push(Middleware::history($this->httpRequestHistoryContainer));
 
         $this->instance = new UsersApiClient(
-            'my-api.baywa-lusy.com/users',
-            'my-api.baywa-lusy.com/subsidiaries',
-            'my-api.baywa-lusy.com/token',
+            'https://my-api.domain.com/users',
+            'https://my-api.domain.com/subsidiaries',
+            'https://my-api.domain.com/token',
             'client-id',
             'client-secret',
             $this->cacheMock,
-            $client,
+            new HttpClient(['handler' => $handlerStack]),
             $this->loggerMock
         );
     }
@@ -75,8 +82,16 @@ class UsersApiClientTest extends TestCase
         // Execute the call
         $users = $this->instance->getUsers();
 
-        // Verification
+        // Verify resulting users
         $this->validateUserProperties($users);
+
+        // Verify if HTTP requests have been made correctly
+        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[0]['request']);
+        $this->assertEquals('GET', $this->httpRequestHistoryContainer[0]['request']->getMethod());
+        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[0]['request']->getUri());
+        $this->assertEquals('https', $this->httpRequestHistoryContainer[0]['request']->getUri()->getScheme());
+        $this->assertEquals('my-api.domain.com', $this->httpRequestHistoryContainer[0]['request']->getUri()->getHost());
+        $this->assertEquals('/users', $this->httpRequestHistoryContainer[0]['request']->getUri()->getPath());
     }
 
     public function testGetUsers_TokenMiss(): void
@@ -116,6 +131,21 @@ class UsersApiClientTest extends TestCase
 
         // Verification
         $this->validateUserProperties($users);
+
+        // Verify if HTTP requests have been made correctly
+        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[0]['request']);
+        $this->assertEquals('POST', $this->httpRequestHistoryContainer[0]['request']->getMethod());
+        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[0]['request']->getUri());
+        $this->assertEquals('https', $this->httpRequestHistoryContainer[0]['request']->getUri()->getScheme());
+        $this->assertEquals('my-api.domain.com', $this->httpRequestHistoryContainer[0]['request']->getUri()->getHost());
+        $this->assertEquals('/token', $this->httpRequestHistoryContainer[0]['request']->getUri()->getPath());
+
+        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[1]['request']);
+        $this->assertEquals('GET', $this->httpRequestHistoryContainer[1]['request']->getMethod());
+        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[1]['request']->getUri());
+        $this->assertEquals('https', $this->httpRequestHistoryContainer[1]['request']->getUri()->getScheme());
+        $this->assertEquals('my-api.domain.com', $this->httpRequestHistoryContainer[1]['request']->getUri()->getHost());
+        $this->assertEquals('/users', $this->httpRequestHistoryContainer[1]['request']->getUri()->getPath());
     }
 
     /**

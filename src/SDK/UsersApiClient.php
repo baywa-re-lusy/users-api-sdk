@@ -3,6 +3,7 @@
 namespace BayWaReLusy\UsersAPI\SDK;
 
 use Laminas\Diactoros\RequestFactory;
+use Laminas\Diactoros\Uri;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
@@ -38,7 +39,7 @@ class UsersApiClient
             if ($cachedToken->isHit()) {
                 $accessToken = $cachedToken->get();
             } else {
-                $tokenRequest = $this->requestFactory->createRequest('GET', $this->tokenUrl);
+                $tokenRequest = $this->requestFactory->createRequest('POST', new Uri($this->tokenUrl));
                 $tokenRequest->getBody()->write((string)json_encode([
                     'grant_type'    => 'client_credentials',
                     'client_id'     => $this->clientId,
@@ -71,7 +72,7 @@ class UsersApiClient
     {
         try {
             $this->loginToAuthServer();
-            $usersRequest = $this->requestFactory->createRequest('GET', $this->usersApiUrl);
+            $usersRequest = $this->requestFactory->createRequest('GET', new Uri($this->usersApiUrl));
             $usersRequest->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
             $response = $this->httpClient->sendRequest($usersRequest);
         } catch (\Throwable $e) {
