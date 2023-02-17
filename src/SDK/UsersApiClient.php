@@ -173,7 +173,7 @@ class UsersApiClient
             $this->userCacheService->save($cachedSubsidiaries);
 
             return $subsidiaries;
-        } catch (\Throwable $e) {
+        } catch (\Throwable | InvalidArgumentException $e) {
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't retrieve the list of Subsidiaries.");
         }
