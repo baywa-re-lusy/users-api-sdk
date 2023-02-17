@@ -1,0 +1,39 @@
+{
+  "_links": {
+    "self": {
+      "href": "https://my-api.domain.com/subsidiaries?page=1"
+    },
+    "first": {
+      "href": "https://my-api.domain.com/subsidiaries"
+    },
+    "last": {
+      "href": "https://my-api.domain.com/subsidiaries?page=1"
+    }
+  },
+  "_embedded": {
+    "subsidiaries": [
+      {
+        "id": "1",
+        "name": "Subsidiary 1",
+        "_links": {
+          "self": {
+            "href": "https://my-api.domain.com/subsidiaries/1"
+          }
+        }
+      },
+      {
+        "id": "2",
+        "name": "Subsidiary 2",
+        "_links": {
+          "self": {
+            "href": "https://my-api.domain.com/subsidiaries/2"
+          }
+        }
+      }
+    ]
+  },
+  "page_count": 1,
+  "page_size": 1000,
+  "total_items": 2,
+  "page": 1
+}

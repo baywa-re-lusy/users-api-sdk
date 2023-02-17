@@ -1,0 +1,104 @@
+version: 2.1
+
+omposer_install: &composer_install
+  name: Composer install
+  command: ./composer.phar install -n
+
+composer_save_cache: &composer_save_cache
+  key: composer-cache-{{ checksum "composer.lock" }}
+  paths:
+    - vendor
+
+composer_restore_cache: &composer_restore_cache
+  keys:
+    - composer-cache-{{ checksum "composer.lock" }}
+
+jobs:
+  build:
+    docker:
+      - image: ${ACR_HOSTNAME_PD}/alpine-php81-apache-build:latest
+        auth:
+          username: ${ACR_LOGIN_PD}
+          password: ${ACR_PASSWORD_PD}
+    resource_class: large
+    working_directory: /var/www/html
+    steps:
+      - run:
+          name: Set git safe directory
+          command: git config --global --add safe.directory /var/www/html
+      - checkout
+      - restore_cache:
+          <<: *composer_restore_cache
+      - run:
+          <<: *composer_install
+      - save_cache:
+          <<: *composer_save_cache
+      - persist_to_workspace:
+          root: /var/www/html
+          paths:
+            - .
+
+  static:
+    docker:
+      - image: ${ACR_HOSTNAME_PD}/alpine-php81-apache-build:latest
+        auth:
+          username: ${ACR_LOGIN_PD}
+          password: ${ACR_PASSWORD_PD}
+    working_directory: /var/www/html
+    resource_class: large
+    steps:
+      - attach_workspace:
+          at: /var/www/html
+      - run:
+          name: PHPStan
+          command: |
+            mkdir -p results/PHPStan
+            php -d memory_limit=4G vendor/bin/phpstan --error-format=junit > results/PHPStan/result.xml; php -d memory_limit=4G vendor/bin/phpstan
+      - run:
+          name: PHPCS
+          command: |
+            mkdir -p results/PHPCS
+            vendor/bin/phpcs src
+      - store_test_results:
+          path: results
+      - store_artifacts:
+          path: results
+
+  phpunit:
+    docker:
+      - image: ${ACR_HOSTNAME_PD}/alpine-php81-apache-build:latest
+        auth:
+          username: ${ACR_LOGIN_PD}
+          password: ${ACR_PASSWORD_PD}
+    resource_class: large
+    working_directory: /var/www/html
+    steps:
+      - attach_workspace:
+          at: /var/www/html
+      - run:
+          name: PHPUnit
+          command: |
+            mkdir -p results/PHPUnit
+            vendor/bin/phpunit --log-junit results/PHPUnit/phpunit.xml
+      - store_test_results:
+          path: results
+      - store_artifacts:
+          path: results
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build:
+          context:
+            - ACR_CREDENTIALS
+      - phpunit:
+          context:
+            - ACR_CREDENTIALS
+          requires:
+            - build
+      - static:
+          context:
+            - ACR_CREDENTIALS
+          requires:
+            - build
