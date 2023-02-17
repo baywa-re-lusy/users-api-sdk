@@ -125,8 +125,6 @@ class UsersApiClient
 
             return $users;
         } catch (\Throwable | InvalidArgumentException $e) {
-//            var_dump($e->getMessage());
-//            die('test');
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't retrieve the list of Users.");
         }
@@ -141,28 +139,43 @@ class UsersApiClient
     public function getSubsidiaries(): array
     {
         try {
+            // Get the subsidiaries from the cache
+            $cachedSubsidiaries = $this->userCacheService->getItem(self::CACHE_KEY_SUBSIDIARIES);
+
+            // If the cached users are still valid, return them
+            if ($cachedSubsidiaries->isHit()) {
+                return $cachedSubsidiaries->get();
+            }
+
             $this->loginToAuthServer();
 
             $subsidiariesRequest = $this->requestFactory->createRequest('GET', new Uri($this->subsidiariesApiUrl));
             $subsidiariesRequest->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
             $response = $this->httpClient->sendRequest($subsidiariesRequest);
+
+            $response     = json_decode($response->getBody()->getContents(), true);
+            $subsidiaries = [];
+
+            foreach ($response['_embedded']['subsidiaries'] as $subsidiaryData) {
+                $subsidiary = new SubsidiaryEntity();
+                $subsidiary
+                    ->setId($subsidiaryData['id'])
+                    ->setName($subsidiaryData['name']);
+
+                $subsidiaries[] = $subsidiary;
+            }
+
+            // Cache the Subsidiaries
+            $cachedSubsidiaries
+                ->set($subsidiaries)
+                ->expiresAfter(self::CACHE_TTL_SUBSIDIARIES);
+
+            $this->userCacheService->save($cachedSubsidiaries);
+
+            return $subsidiaries;
         } catch (\Throwable $e) {
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't retrieve the list of Subsidiaries.");
         }
-
-        $response     = json_decode($response->getBody()->getContents(), true);
-        $subsidiaries = [];
-
-        foreach ($response['_embedded']['subsidiaries'] as $subsidiaryData) {
-            $subsidiary = new SubsidiaryEntity();
-            $subsidiary
-                ->setId($subsidiaryData['id'])
-                ->setName($subsidiaryData['name']);
-
-            $subsidiaries[] = $subsidiary;
-        }
-
-        return $subsidiaries;
     }
 }
