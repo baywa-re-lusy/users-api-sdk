@@ -110,7 +110,9 @@ class UsersApiClient
                     ->setUsername($userData['username'])
                     ->setEmail($userData['email'])
                     ->setEmailVerified($userData['emailVerified'])
-                    ->setCreated(\DateTime::createFromFormat(\DateTimeInterface::RFC3339, $userData['created']))
+                    ->setCreated(
+                        \DateTime::createFromFormat(\DateTimeInterface::RFC3339, $userData['created']) ?: null
+                    )
                     ->setRoles($userData['roles']);
 
                 $users[] = $user;
