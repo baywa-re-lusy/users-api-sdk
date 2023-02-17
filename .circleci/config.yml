@@ -1,6 +1,6 @@
 version: 2.1
 
-omposer_install: &composer_install
+composer_install: &composer_install
   name: Composer install
   command: ./composer.phar install -n
 
@@ -27,8 +27,8 @@ jobs:
           name: Set git safe directory
           command: git config --global --add safe.directory /var/www/html
       - checkout
-      - restore_cache:
-          <<: *composer_restore_cache
+#      - restore_cache:
+#          <<: *composer_restore_cache
       - run:
           <<: *composer_install
       - save_cache:
