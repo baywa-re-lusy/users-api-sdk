@@ -856,6 +856,14 @@ class UsersApiClientTest extends TestCase
         $this->assertEquals('https', $this->httpRequestHistoryContainer[0]['request']->getUri()->getScheme());
         $this->assertEquals('api.domain.com', $this->httpRequestHistoryContainer[0]['request']->getUri()->getHost());
         $this->assertEquals('/token', $this->httpRequestHistoryContainer[0]['request']->getUri()->getPath());
+        $this->assertEquals(
+            'application/json',
+            $this->httpRequestHistoryContainer[0]['request']->getHeader('Accept')[0]
+        );
+        $this->assertEquals(
+            'application/x-www-form-urlencoded',
+            $this->httpRequestHistoryContainer[0]['request']->getHeader('Content-Type')[0]
+        );
     }
 
     protected function validateUsersRequest(int $nb): void

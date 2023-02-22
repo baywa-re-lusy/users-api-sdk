@@ -52,11 +52,13 @@ class UsersApiClient
             } else {
                 // If the cached Token isn't valid, generate a new one
                 $tokenRequest = $this->requestFactory->createRequest('POST', new Uri($this->tokenUrl));
-                $tokenRequest->getBody()->write((string)json_encode([
+                $tokenRequest = $tokenRequest->withHeader('Accept', 'application/json');
+                $tokenRequest = $tokenRequest->withHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+                $tokenRequest->getBody()->write(http_build_query([
                     'grant_type'    => 'client_credentials',
                     'client_id'     => $this->clientId,
                     'client_secret' => $this->clientSecret,
-                    'state'         => time(),
                 ]));
 
                 $response    = $this->httpClient->sendRequest($tokenRequest);
