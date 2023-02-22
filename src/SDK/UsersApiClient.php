@@ -52,11 +52,13 @@ class UsersApiClient
             } else {
                 // If the cached Token isn't valid, generate a new one
                 $tokenRequest = $this->requestFactory->createRequest('POST', new Uri($this->tokenUrl));
-                $tokenRequest->getBody()->write((string)json_encode([
+                $tokenRequest = $tokenRequest->withHeader('Accept', 'application/json');
+                $tokenRequest = $tokenRequest->withHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+                $tokenRequest->getBody()->write(http_build_query([
                     'grant_type'    => 'client_credentials',
                     'client_id'     => $this->clientId,
                     'client_secret' => $this->clientSecret,
-                    'state'         => time(),
                 ]));
 
                 $response    = $this->httpClient->sendRequest($tokenRequest);
@@ -97,9 +99,12 @@ class UsersApiClient
 
             // If the cached users are no longer valid, get them from the Users API
             $this->loginToAuthServer();
-            $usersRequest = $this->requestFactory->createRequest('GET', new Uri($this->usersApiUrl));
-            $usersRequest->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
-            $response = $this->httpClient->sendRequest($usersRequest);
+
+            $request = $this->requestFactory->createRequest('GET', new Uri($this->usersApiUrl));
+            $request = $request->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
+            $request = $request->withHeader('Accept', 'application/json');
+
+            $response = $this->httpClient->sendRequest($request);
 
             $response = json_decode($response->getBody()->getContents(), true);
             $users    = [];
@@ -153,10 +158,12 @@ class UsersApiClient
 
             // If the cached users are no longer valid, get them from the Users API
             $this->loginToAuthServer();
-            $usersRequest = $this->requestFactory->createRequest('GET', new Uri($this->usersApiUrl . '/' . $id));
-            $usersRequest->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
-            $response = $this->httpClient->sendRequest($usersRequest);
 
+            $request = $this->requestFactory->createRequest('GET', new Uri($this->usersApiUrl . '/' . $id));
+            $request = $request->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
+            $request = $request->withHeader('Accept', 'application/json');
+
+            $response = $this->httpClient->sendRequest($request);
             $response = json_decode($response->getBody()->getContents(), true);
 
             $user = new UserEntity();
@@ -204,9 +211,11 @@ class UsersApiClient
 
             $this->loginToAuthServer();
 
-            $subsidiariesRequest = $this->requestFactory->createRequest('GET', new Uri($this->subsidiariesApiUrl));
-            $subsidiariesRequest->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
-            $response = $this->httpClient->sendRequest($subsidiariesRequest);
+            $request = $this->requestFactory->createRequest('GET', new Uri($this->subsidiariesApiUrl));
+            $request = $request->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
+            $request = $request->withHeader('Accept', 'application/json');
+
+            $response = $this->httpClient->sendRequest($request);
 
             $response     = json_decode($response->getBody()->getContents(), true);
             $subsidiaries = [];

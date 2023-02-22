@@ -856,6 +856,14 @@ class UsersApiClientTest extends TestCase
         $this->assertEquals('https', $this->httpRequestHistoryContainer[0]['request']->getUri()->getScheme());
         $this->assertEquals('api.domain.com', $this->httpRequestHistoryContainer[0]['request']->getUri()->getHost());
         $this->assertEquals('/token', $this->httpRequestHistoryContainer[0]['request']->getUri()->getPath());
+        $this->assertEquals(
+            'application/json',
+            $this->httpRequestHistoryContainer[0]['request']->getHeader('Accept')[0]
+        );
+        $this->assertEquals(
+            'application/x-www-form-urlencoded',
+            $this->httpRequestHistoryContainer[0]['request']->getHeader('Content-Type')[0]
+        );
     }
 
     protected function validateUsersRequest(int $nb): void
@@ -866,6 +874,10 @@ class UsersApiClientTest extends TestCase
         $this->assertEquals('https', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getScheme());
         $this->assertEquals('api.domain.com', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getHost());
         $this->assertEquals('/users', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getPath());
+        $this->assertEquals(
+            'application/json',
+            $this->httpRequestHistoryContainer[$nb]['request']->getHeader('Accept')[0]
+        );
     }
 
     protected function validateUserRequest(int $nb): void
@@ -879,6 +891,10 @@ class UsersApiClientTest extends TestCase
             '/users/c84056a1-8d36-46c4-ae15-e3cb3db18ed2',
             $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getPath()
         );
+        $this->assertEquals(
+            'application/json',
+            $this->httpRequestHistoryContainer[$nb]['request']->getHeader('Accept')[0]
+        );
     }
 
     protected function validateSubsidiariesRequest(int $nb): void
@@ -889,6 +905,10 @@ class UsersApiClientTest extends TestCase
         $this->assertEquals('https', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getScheme());
         $this->assertEquals('api.domain.com', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getHost());
         $this->assertEquals('/subsidiaries', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getPath());
+        $this->assertEquals(
+            'application/json',
+            $this->httpRequestHistoryContainer[$nb]['request']->getHeader('Accept')[0]
+        );
     }
 
     /**
