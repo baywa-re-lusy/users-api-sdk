@@ -37,6 +37,7 @@ $usersApiClient = new \BayWaReLusy\UsersAPI\SDK\UsersApiClient(
 
 $users        = $usersApiClient->getUsers();
 $subsidiaries = $usersApiClient->getSubsidiaries();
+$user         = $usersApiClient->getUser('<userId>');
 ```
 
 
