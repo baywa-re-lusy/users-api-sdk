@@ -41,9 +41,9 @@ class UsersApiClientTest extends TestCase
         $handlerStack->push(Middleware::history($this->httpRequestHistoryContainer));
 
         $this->instance = new UsersApiClient(
-            'https://my-api.domain.com/users',
-            'https://my-api.domain.com/subsidiaries',
-            'https://my-api.domain.com/token',
+            'https://api.domain.com/users',
+            'https://api.domain.com/subsidiaries',
+            'https://api.domain.com/token',
             'client-id',
             'client-secret',
             $this->tokenCacheMock,
@@ -62,7 +62,7 @@ class UsersApiClientTest extends TestCase
      * @throws UsersApiException
      * @throws Exception
      */
-    public function testGetUsers_UsersHit(): void
+    public function testGetUsers_UsersCacheHit(): void
     {
         // If the User cache hits, there is no call to the token cache
         $this->tokenCacheMock
@@ -109,7 +109,7 @@ class UsersApiClientTest extends TestCase
         $users = $this->instance->getUsers();
 
         // Verify resulting users
-        $this->validateUserProperties($users);
+        $this->validateUsersProperties($users);
     }
 
     /**
@@ -121,30 +121,10 @@ class UsersApiClientTest extends TestCase
      * @throws UsersApiException
      * @throws Exception
      */
-    public function testGetUsers_UsersMiss_TokenHit(): void
+    public function testGetUsers_UsersCacheMiss_TokenCacheHit(): void
     {
         // Mock the Cache hit for the access token call
-        $cacheItemMock = $this->createMock(CacheItemInterface::class);
-        $cacheItemMock
-            ->expects($this->once())
-            ->method('isHit')
-            ->willReturn($this->returnValue(true));
-        $cacheItemMock
-            ->expects($this->never())
-            ->method('set');
-        $cacheItemMock
-            ->expects($this->once())
-            ->method('get')
-            ->willReturn($this->returnValue('access-token'));
-
-        $this->tokenCacheMock
-            ->expects($this->once())
-            ->method('getItem')
-            ->with('usersApiAccessToken')
-            ->will($this->returnValue($cacheItemMock));
-        $this->tokenCacheMock
-            ->expects($this->never())
-            ->method('save');
+        $this->mockTokenCacheHit();
 
         // Mock the cache miss for the users
         $this->mockCacheMissForUsersCall();
@@ -158,15 +138,10 @@ class UsersApiClientTest extends TestCase
         $users = $this->instance->getUsers();
 
         // Verify resulting users
-        $this->validateUserProperties($users);
+        $this->validateUsersProperties($users);
 
         // Verify if HTTP requests have been made correctly
-        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[0]['request']);
-        $this->assertEquals('GET', $this->httpRequestHistoryContainer[0]['request']->getMethod());
-        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[0]['request']->getUri());
-        $this->assertEquals('https', $this->httpRequestHistoryContainer[0]['request']->getUri()->getScheme());
-        $this->assertEquals('my-api.domain.com', $this->httpRequestHistoryContainer[0]['request']->getUri()->getHost());
-        $this->assertEquals('/users', $this->httpRequestHistoryContainer[0]['request']->getUri()->getPath());
+        $this->validateUsersRequest(0);
     }
 
     /**
@@ -178,37 +153,10 @@ class UsersApiClientTest extends TestCase
      * @throws UsersApiException
      * @throws Exception
      */
-    public function testGetUsers_UsersMiss_TokenMiss(): void
+    public function testGetUsers_UsersCacheMiss_TokenCacheMiss(): void
     {
         // Mock the Cache hit for the access token call
-        $cacheItemMock = $this->createMock(CacheItemInterface::class);
-        $cacheItemMock
-            ->expects($this->once())
-            ->method('isHit')
-            ->willReturn($this->returnValue(false));
-        $cacheItemMock
-            ->expects($this->once())
-            ->method('set')
-            ->with('access-token')
-            ->will($this->returnSelf());
-        $cacheItemMock
-            ->expects($this->once())
-            ->method('expiresAfter')
-            ->with(50)
-            ->will($this->returnSelf());
-        $cacheItemMock
-            ->expects($this->never())
-            ->method('get');
-
-        $this->tokenCacheMock
-            ->expects($this->once())
-            ->method('getItem')
-            ->with('usersApiAccessToken')
-            ->will($this->returnValue($cacheItemMock));
-        $this->tokenCacheMock
-            ->expects($this->once())
-            ->method('save')
-            ->with($cacheItemMock);
+        $this->mockTokenCacheMiss();
 
         // Mock the cache miss for the users
         $this->mockCacheMissForUsersCall();
@@ -223,22 +171,11 @@ class UsersApiClientTest extends TestCase
         $users = $this->instance->getUsers();
 
         // Verification
-        $this->validateUserProperties($users);
+        $this->validateUsersProperties($users);
 
         // Verify if HTTP requests have been made correctly
-        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[0]['request']);
-        $this->assertEquals('POST', $this->httpRequestHistoryContainer[0]['request']->getMethod());
-        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[0]['request']->getUri());
-        $this->assertEquals('https', $this->httpRequestHistoryContainer[0]['request']->getUri()->getScheme());
-        $this->assertEquals('my-api.domain.com', $this->httpRequestHistoryContainer[0]['request']->getUri()->getHost());
-        $this->assertEquals('/token', $this->httpRequestHistoryContainer[0]['request']->getUri()->getPath());
-
-        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[1]['request']);
-        $this->assertEquals('GET', $this->httpRequestHistoryContainer[1]['request']->getMethod());
-        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[1]['request']->getUri());
-        $this->assertEquals('https', $this->httpRequestHistoryContainer[1]['request']->getUri()->getScheme());
-        $this->assertEquals('my-api.domain.com', $this->httpRequestHistoryContainer[1]['request']->getUri()->getHost());
-        $this->assertEquals('/users', $this->httpRequestHistoryContainer[1]['request']->getUri()->getPath());
+        $this->validateTokenRequest();
+        $this->validateUsersRequest(1);
     }
 
     /**
@@ -253,25 +190,7 @@ class UsersApiClientTest extends TestCase
     public function testGetUsers_CacheError(): void
     {
         // Mock the Cache hit for the access token call
-        $cacheItemMock = $this->createMock(CacheItemInterface::class);
-        $cacheItemMock
-            ->expects($this->never())
-            ->method('isHit');
-        $cacheItemMock
-            ->expects($this->never())
-            ->method('set');
-        $cacheItemMock
-            ->expects($this->never())
-            ->method('get');
-
-        $this->tokenCacheMock
-            ->expects($this->once())
-            ->method('getItem')
-            ->with('usersApiAccessToken')
-            ->willThrowException(new InvalidArgumentException('cache error'));
-        $this->tokenCacheMock
-            ->expects($this->never())
-            ->method('save');
+        $this->mockCacheException();
 
         // Mock the cache hit for the users
         $usersCacheItemMock = $this->createMock(CacheItemInterface::class);
@@ -377,30 +296,10 @@ class UsersApiClientTest extends TestCase
      * @throws UsersApiException
      * @throws Exception
      */
-    public function testGetUsers_UserGetException_TokenHit(): void
+    public function testGetUsers_UserGetException_TokenCacheHit(): void
     {
         // Mock the Cache hit for the access token call
-        $cacheItemMock = $this->createMock(CacheItemInterface::class);
-        $cacheItemMock
-            ->expects($this->once())
-            ->method('isHit')
-            ->willReturn($this->returnValue(true));
-        $cacheItemMock
-            ->expects($this->never())
-            ->method('set');
-        $cacheItemMock
-            ->expects($this->once())
-            ->method('get')
-            ->willReturn($this->returnValue('access-token'));
-
-        $this->tokenCacheMock
-            ->expects($this->once())
-            ->method('getItem')
-            ->with('usersApiAccessToken')
-            ->will($this->returnValue($cacheItemMock));
-        $this->tokenCacheMock
-            ->expects($this->never())
-            ->method('save');
+        $this->mockTokenCacheHit();
 
         // Mock the cache miss for the users
         $usersCacheItemMock = $this->createMock(CacheItemInterface::class);
@@ -442,30 +341,10 @@ class UsersApiClientTest extends TestCase
      * @throws UsersApiException
      * @throws Exception
      */
-    public function testGetSubsidiaries_SubsidiariesMiss_TokenHit(): void
+    public function testGetSubsidiaries_SubsidiaryCacheMiss_TokenCacheHit(): void
     {
         // Mock the Cache hit for the access token call
-        $cacheItemMock = $this->createMock(CacheItemInterface::class);
-        $cacheItemMock
-            ->expects($this->once())
-            ->method('isHit')
-            ->willReturn($this->returnValue(true));
-        $cacheItemMock
-            ->expects($this->never())
-            ->method('set');
-        $cacheItemMock
-            ->expects($this->once())
-            ->method('get')
-            ->willReturn($this->returnValue('access-token'));
-
-        $this->tokenCacheMock
-            ->expects($this->once())
-            ->method('getItem')
-            ->with('usersApiAccessToken')
-            ->will($this->returnValue($cacheItemMock));
-        $this->tokenCacheMock
-            ->expects($this->never())
-            ->method('save');
+        $this->mockTokenCacheHit();
 
         // Mock the cache miss for the subsidiaries
         $this->mockCacheMissForSubsidiariesCall();
@@ -482,12 +361,7 @@ class UsersApiClientTest extends TestCase
         $this->validateSubsidiaryProperties($subsidiaries);
 
         // Verify if HTTP requests have been made correctly
-        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[0]['request']);
-        $this->assertEquals('GET', $this->httpRequestHistoryContainer[0]['request']->getMethod());
-        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[0]['request']->getUri());
-        $this->assertEquals('https', $this->httpRequestHistoryContainer[0]['request']->getUri()->getScheme());
-        $this->assertEquals('my-api.domain.com', $this->httpRequestHistoryContainer[0]['request']->getUri()->getHost());
-        $this->assertEquals('/subsidiaries', $this->httpRequestHistoryContainer[0]['request']->getUri()->getPath());
+        $this->validateSubsidiariesRequest(0);
     }
 
     /**
@@ -499,37 +373,10 @@ class UsersApiClientTest extends TestCase
      * @throws UsersApiException
      * @throws Exception
      */
-    public function testGetSubsidiaries_SubsidiariesMiss_TokenMiss(): void
+    public function testGetSubsidiaries_SubsidiaryCacheMiss_TokenCacheMiss(): void
     {
         // Mock the Cache hit for the access token call
-        $cacheItemMock = $this->createMock(CacheItemInterface::class);
-        $cacheItemMock
-            ->expects($this->once())
-            ->method('isHit')
-            ->willReturn($this->returnValue(false));
-        $cacheItemMock
-            ->expects($this->once())
-            ->method('set')
-            ->with('access-token')
-            ->will($this->returnSelf());
-        $cacheItemMock
-            ->expects($this->once())
-            ->method('expiresAfter')
-            ->with(50)
-            ->will($this->returnSelf());
-        $cacheItemMock
-            ->expects($this->never())
-            ->method('get');
-
-        $this->tokenCacheMock
-            ->expects($this->once())
-            ->method('getItem')
-            ->with('usersApiAccessToken')
-            ->will($this->returnValue($cacheItemMock));
-        $this->tokenCacheMock
-            ->expects($this->once())
-            ->method('save')
-            ->with($cacheItemMock);
+        $this->mockTokenCacheMiss();
 
         // Mock the cache miss for the subsidiaries
         $this->mockCacheMissForSubsidiariesCall();
@@ -547,19 +394,8 @@ class UsersApiClientTest extends TestCase
         $this->validateSubsidiaryProperties($subsidiaries);
 
         // Verify if HTTP requests have been made correctly
-        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[0]['request']);
-        $this->assertEquals('POST', $this->httpRequestHistoryContainer[0]['request']->getMethod());
-        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[0]['request']->getUri());
-        $this->assertEquals('https', $this->httpRequestHistoryContainer[0]['request']->getUri()->getScheme());
-        $this->assertEquals('my-api.domain.com', $this->httpRequestHistoryContainer[0]['request']->getUri()->getHost());
-        $this->assertEquals('/token', $this->httpRequestHistoryContainer[0]['request']->getUri()->getPath());
-
-        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[1]['request']);
-        $this->assertEquals('GET', $this->httpRequestHistoryContainer[1]['request']->getMethod());
-        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[1]['request']->getUri());
-        $this->assertEquals('https', $this->httpRequestHistoryContainer[1]['request']->getUri()->getScheme());
-        $this->assertEquals('my-api.domain.com', $this->httpRequestHistoryContainer[1]['request']->getUri()->getHost());
-        $this->assertEquals('/subsidiaries', $this->httpRequestHistoryContainer[1]['request']->getUri()->getPath());
+        $this->validateTokenRequest();
+        $this->validateSubsidiariesRequest(1);
     }
 
     /**
@@ -571,7 +407,7 @@ class UsersApiClientTest extends TestCase
      * @throws UsersApiException
      * @throws Exception
      */
-    public function testGetSubsidiaries_SubsidiaryGetException_TokenHit(): void
+    public function testGetSubsidiaries_SubsidiaryGetException_TokenCacheHit(): void
     {
         // Mock the Cache hit for the access token call
         $cacheItemMock = $this->createMock(CacheItemInterface::class);
@@ -636,7 +472,7 @@ class UsersApiClientTest extends TestCase
      * @throws UsersApiException
      * @throws Exception
      */
-    public function testGetSubsidiaries_SubsidiariesHit(): void
+    public function testGetSubsidiaries_SubsidiaryCacheHit(): void
     {
         // If the User cache hits, there is no call to the token cache
         $this->tokenCacheMock
@@ -681,10 +517,279 @@ class UsersApiClientTest extends TestCase
     }
 
     /**
+     * Test the GET /users/<userId> call.
+     * -> User is fetched from the cache
+     * -> No call to token endpoint or token cache necessary
+     *
+     * @return void
+     * @throws UsersApiException
+     * @throws Exception
+     */
+    public function testGetUser_UserCacheHit(): void
+    {
+        // If the User cache hits, there is no call to the token cache
+        $this->tokenCacheMock
+            ->expects($this->never())
+            ->method('getItem');
+
+        // Mock the cache hit for the users
+        $usersCacheItemMock = $this->createMock(CacheItemInterface::class);
+        $usersCacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(true));
+        $usersCacheItemMock
+            ->expects($this->never())
+            ->method('set');
+        $usersCacheItemMock
+            ->expects($this->once())
+            ->method('get')
+            ->willReturn($this->returnValue(
+                (new UserEntity())
+                    ->setId('c84056a1-8d36-46c4-ae15-e3cb3db18ed2')
+                    ->setEmail('john.doe@email.com')
+                    ->setEmailVerified(true)
+                    ->setUsername('john.doe')
+                    ->setRoles(['role1', 'role2'])
+            ));
+
+        $this->usersCacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiUser_c84056a1-8d36-46c4-ae15-e3cb3db18ed2')
+            ->will($this->returnValue($usersCacheItemMock));
+        $this->usersCacheMock
+            ->expects($this->never())
+            ->method('save');
+
+        // Execute the call
+        $user = $this->instance->getUser('c84056a1-8d36-46c4-ae15-e3cb3db18ed2');
+
+        // Verify resulting users
+        $this->validateUserProperties($user);
+    }
+
+    /**
+     * Test the GET /users/<userId> call.
+     * -> User isn't fetched from the cache
+     * -> Token found in the token cache
+     *
+     * @return void
+     * @throws UsersApiException
+     * @throws Exception
+     */
+    public function testGetUser_UserCacheMiss_TokenCacheHit(): void
+    {
+        // Mock the Cache hit for the access token call
+        $this->mockTokenCacheHit();
+
+        // Mock the cache miss for the users
+        $this->mockCacheMissForUserCall();
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(
+            new Response(200, [], (string)file_get_contents(__DIR__ . '/_files/user.json'))
+        );
+
+        // Execute the call
+        $user = $this->instance->getUser('c84056a1-8d36-46c4-ae15-e3cb3db18ed2');
+
+        // Verify result(s) and request(s)
+        $this->validateUserProperties($user);
+        $this->validateUserRequest(0);
+    }
+
+    /**
+     * Test the GET /users/<userId> call.
+     * -> User isn't fetched from the cache
+     * -> Token not found in the token cache
+     *
+     * @return void
+     * @throws UsersApiException
+     * @throws Exception
+     */
+    public function testGetUser_UserCacheMiss_TokenCacheMiss(): void
+    {
+        // Mock the Cache hit for the access token call
+        $this->mockTokenCacheMiss();
+
+        // Mock the cache miss for the users
+        $this->mockCacheMissForUserCall();
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(
+            new Response(200, [], '{"access_token": "access-token", "expires_in": "60"}'),
+            new Response(200, [], (string)file_get_contents(__DIR__ . '/_files/user.json'))
+        );
+
+        // Execute the call
+        $user = $this->instance->getUser('c84056a1-8d36-46c4-ae15-e3cb3db18ed2');
+
+        // Verify result(s) and request(s)
+        $this->validateUserProperties($user);
+        $this->validateTokenRequest();
+        $this->validateUserRequest(1);
+    }
+
+    /**
+     * Test the GET /users/<userId> call.
+     * -> Token cache throws exception
+     * -> No call to users cache or API
+     *
+     * @return void
+     * @throws UsersApiException
+     * @throws Exception
+     */
+    public function testGetUser_CacheError(): void
+    {
+        // Mock the Cache exception for the access token call
+        $this->mockCacheException();
+
+        // Mock the cache miss for the user
+        $usersCacheItemMock = $this->createMock(CacheItemInterface::class);
+        $usersCacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(false));
+        $usersCacheItemMock
+            ->expects($this->never())
+            ->method('set');
+        $usersCacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->usersCacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiUser_c84056a1-8d36-46c4-ae15-e3cb3db18ed2')
+            ->will($this->returnValue($usersCacheItemMock));
+        $this->usersCacheMock
+            ->expects($this->never())
+            ->method('save');
+
+        $this->expectException(UsersApiException::class);
+
+        // Execute the call
+        $this->instance->getUser('c84056a1-8d36-46c4-ae15-e3cb3db18ed2');
+    }
+
+    /**
+     * Test the GET /users/<userId> call.
+     * -> Token cache miss
+     * -> Token request call throws exception
+     *
+     * @return void
+     * @throws UsersApiException
+     * @throws Exception
+     */
+    public function testGetUser_TokenRequestException(): void
+    {
+        // Mock the Cache miss for the access token call
+        $cacheItemMock = $this->createMock(CacheItemInterface::class);
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(false));
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('set');
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('expiresAfter');
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->tokenCacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiAccessToken')
+            ->will($this->returnValue($cacheItemMock));
+        $this->tokenCacheMock
+            ->expects($this->never())
+            ->method('save');
+
+        // Mock the cache hit for the users
+        $usersCacheItemMock = $this->createMock(CacheItemInterface::class);
+        $usersCacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(false));
+        $usersCacheItemMock
+            ->expects($this->never())
+            ->method('set');
+        $usersCacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->usersCacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiUser_c84056a1-8d36-46c4-ae15-e3cb3db18ed2')
+            ->will($this->returnValue($usersCacheItemMock));
+        $this->usersCacheMock
+            ->expects($this->never())
+            ->method('save');
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(new ClientException('token request error'));
+
+        $this->expectException(UsersApiException::class);
+
+        // Execute the call
+        $this->instance->getUser('c84056a1-8d36-46c4-ae15-e3cb3db18ed2');
+    }
+
+    /**
+     * Test the GET /users/<userId> call.
+     * -> Token cache hit
+     * -> User GET request throws exception
+     *
+     * @return void
+     * @throws UsersApiException
+     * @throws Exception
+     */
+    public function testGetUser_UserGetException_TokenCacheHit(): void
+    {
+        // Mock the Cache hit for the access token call
+        $this->mockTokenCacheHit();
+
+        // Mock the cache miss for the users
+        $usersCacheItemMock = $this->createMock(CacheItemInterface::class);
+        $usersCacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(false));
+        $usersCacheItemMock
+            ->expects($this->never())
+            ->method('set');
+        $usersCacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->usersCacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiUser_c84056a1-8d36-46c4-ae15-e3cb3db18ed2')
+            ->will($this->returnValue($usersCacheItemMock));
+        $this->usersCacheMock
+            ->expects($this->never())
+            ->method('save');
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(new ClientException('user get exception'));
+
+        $this->expectException(UsersApiException::class);
+
+        // Execute the call
+        $this->instance->getUser('c84056a1-8d36-46c4-ae15-e3cb3db18ed2');
+    }
+
+    /**
      * @param UserEntity[] $users
      * @return void
      */
-    protected function validateUserProperties(array $users): void
+    protected function validateUsersProperties(array $users): void
     {
         // Check the number of returned users
         $this->assertCount(2, $users);
@@ -710,6 +815,15 @@ class UsersApiClientTest extends TestCase
         $this->assertEquals(['role2', 'role3'], $users[1]->getRoles());
     }
 
+    protected function validateUserProperties(UserEntity $user): void
+    {
+        $this->assertEquals('c84056a1-8d36-46c4-ae15-e3cb3db18ed2', $user->getId());
+        $this->assertEquals('john.doe', $user->getUsername());
+        $this->assertEquals('john.doe@email.com', $user->getEmail());
+        $this->assertTrue($user->getEmailVerified());
+        $this->assertEquals(['role1', 'role2'], $user->getRoles());
+    }
+
     /**
      * @param SubsidiaryEntity[] $subsidiaries
      * @return void
@@ -729,6 +843,117 @@ class UsersApiClientTest extends TestCase
 
         $this->assertEquals('Subsidiary 1', $subsidiaries[0]->getName());
         $this->assertEquals('Subsidiary 2', $subsidiaries[1]->getName());
+    }
+
+    /**
+     * @return void
+     */
+    protected function validateTokenRequest(): void
+    {
+        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[0]['request']);
+        $this->assertEquals('POST', $this->httpRequestHistoryContainer[0]['request']->getMethod());
+        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[0]['request']->getUri());
+        $this->assertEquals('https', $this->httpRequestHistoryContainer[0]['request']->getUri()->getScheme());
+        $this->assertEquals('api.domain.com', $this->httpRequestHistoryContainer[0]['request']->getUri()->getHost());
+        $this->assertEquals('/token', $this->httpRequestHistoryContainer[0]['request']->getUri()->getPath());
+    }
+
+    protected function validateUsersRequest(int $nb): void
+    {
+        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[$nb]['request']);
+        $this->assertEquals('GET', $this->httpRequestHistoryContainer[$nb]['request']->getMethod());
+        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[$nb]['request']->getUri());
+        $this->assertEquals('https', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getScheme());
+        $this->assertEquals('api.domain.com', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getHost());
+        $this->assertEquals('/users', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getPath());
+    }
+
+    protected function validateUserRequest(int $nb): void
+    {
+        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[$nb]['request']);
+        $this->assertEquals('GET', $this->httpRequestHistoryContainer[$nb]['request']->getMethod());
+        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[$nb]['request']->getUri());
+        $this->assertEquals('https', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getScheme());
+        $this->assertEquals('api.domain.com', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getHost());
+        $this->assertEquals(
+            '/users/c84056a1-8d36-46c4-ae15-e3cb3db18ed2',
+            $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getPath()
+        );
+    }
+
+    protected function validateSubsidiariesRequest(int $nb): void
+    {
+        $this->assertInstanceOf(RequestInterface::class, $this->httpRequestHistoryContainer[$nb]['request']);
+        $this->assertEquals('GET', $this->httpRequestHistoryContainer[$nb]['request']->getMethod());
+        $this->assertInstanceOf(UriInterface::class, $this->httpRequestHistoryContainer[$nb]['request']->getUri());
+        $this->assertEquals('https', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getScheme());
+        $this->assertEquals('api.domain.com', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getHost());
+        $this->assertEquals('/subsidiaries', $this->httpRequestHistoryContainer[$nb]['request']->getUri()->getPath());
+    }
+
+    /**
+     * @return void
+     * @throws Exception
+     */
+    protected function mockTokenCacheMiss(): void
+    {
+        $cacheItemMock = $this->createMock(CacheItemInterface::class);
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(false));
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('set')
+            ->with('access-token')
+            ->will($this->returnSelf());
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('expiresAfter')
+            ->with(50)
+            ->will($this->returnSelf());
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->tokenCacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiAccessToken')
+            ->will($this->returnValue($cacheItemMock));
+        $this->tokenCacheMock
+            ->expects($this->once())
+            ->method('save')
+            ->with($cacheItemMock);
+    }
+
+    /**
+     * @return void
+     * @throws Exception
+     */
+    protected function mockTokenCacheHit(): void
+    {
+        $cacheItemMock = $this->createMock(CacheItemInterface::class);
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(true));
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('set');
+        $cacheItemMock
+            ->expects($this->once())
+            ->method('get')
+            ->willReturn($this->returnValue('access-token'));
+
+        $this->tokenCacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiAccessToken')
+            ->will($this->returnValue($cacheItemMock));
+        $this->tokenCacheMock
+            ->expects($this->never())
+            ->method('save');
     }
 
     /**
@@ -780,6 +1005,47 @@ class UsersApiClientTest extends TestCase
      * @return void
      * @throws Exception
      */
+    protected function mockCacheMissForUserCall(): void
+    {
+        $usersCacheItemMock = $this->createMock(CacheItemInterface::class);
+        $usersCacheItemMock
+            ->expects($this->once())
+            ->method('isHit')
+            ->willReturn($this->returnValue(false));
+        $usersCacheItemMock
+            ->expects($this->once())
+            ->method('set')
+            ->with($this->callback(function ($value) {
+                return
+                    $value->getId() === 'c84056a1-8d36-46c4-ae15-e3cb3db18ed2' &&
+                    $value->getUsername() === 'john.doe' &&
+                    $value->getEmail() === 'john.doe@email.com' &&
+                    $value->getEmailVerified() === true;
+            }))
+            ->will($this->returnSelf());
+        $usersCacheItemMock
+            ->expects($this->once())
+            ->method('expiresAfter')
+            ->with(60);
+        $usersCacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->usersCacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiUser_c84056a1-8d36-46c4-ae15-e3cb3db18ed2')
+            ->will($this->returnValue($usersCacheItemMock));
+        $this->usersCacheMock
+            ->expects($this->once())
+            ->method('save')
+            ->with($usersCacheItemMock);
+    }
+
+    /**
+     * @return void
+     * @throws Exception
+     */
     protected function mockCacheMissForSubsidiariesCall(): void
     {
         $subsidiariesCacheItemMock = $this->createMock(CacheItemInterface::class);
@@ -815,5 +1081,30 @@ class UsersApiClientTest extends TestCase
             ->expects($this->once())
             ->method('save')
             ->with($subsidiariesCacheItemMock);
+    }
+
+    /**
+     * @throws Exception
+     */
+    protected function mockCacheException(): void
+    {
+        $cacheItemMock = $this->createMock(CacheItemInterface::class);
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('isHit');
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('set');
+        $cacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->tokenCacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->willThrowException(new InvalidArgumentException('cache error'));
+        $this->tokenCacheMock
+            ->expects($this->never())
+            ->method('save');
     }
 }
