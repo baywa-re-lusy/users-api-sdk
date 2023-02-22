@@ -15,7 +15,7 @@ class UsersApiClient
     protected const CACHE_KEY_USERS        = 'usersApiUsers';
     protected const CACHE_KEY_USER         = 'usersApiUser_%s';
     protected const CACHE_KEY_SUBSIDIARIES = 'usersApiSubsidiaries';
-    protected const CACHE_TTL_USERS        = 60;
+    protected const CACHE_TTL_USERS        = 600;
     protected const CACHE_TTL_SUBSIDIARIES = 86400;
 
     protected ?string $accessToken = null;

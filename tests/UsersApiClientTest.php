@@ -985,7 +985,7 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('expiresAfter')
-            ->with(60);
+            ->with(600);
         $usersCacheItemMock
             ->expects($this->never())
             ->method('get');
@@ -1026,7 +1026,7 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('expiresAfter')
-            ->with(60);
+            ->with(600);
         $usersCacheItemMock
             ->expects($this->never())
             ->method('get');
