@@ -13,8 +13,9 @@ class UsersApiClient
 {
     protected const CACHE_KEY_API_TOKEN    = 'usersApiAccessToken';
     protected const CACHE_KEY_USERS        = 'usersApiUsers';
+    protected const CACHE_KEY_USER         = 'usersApiUser_%s';
     protected const CACHE_KEY_SUBSIDIARIES = 'usersApiSubsidiaries';
-    protected const CACHE_TTL_USERS        = 60;
+    protected const CACHE_TTL_USERS        = 600;
     protected const CACHE_TTL_SUBSIDIARIES = 86400;
 
     protected ?string $accessToken = null;
@@ -126,6 +127,58 @@ class UsersApiClient
             $this->userCacheService->save($cachedUsers);
 
             return $users;
+        } catch (\Throwable | InvalidArgumentException $e) {
+            $this->logger?->error($e->getMessage());
+            throw new UsersApiException("Couldn't retrieve the list of Users.");
+        }
+    }
+
+    /**
+     * Get a single User.
+     *
+     * @param string $id The User ID
+     * @return UserEntity|null
+     * @throws UsersApiException
+     */
+    public function getUser(string $id): ?UserEntity
+    {
+        try {
+            // Get the users from the cache
+            $cachedUser = $this->userCacheService->getItem(sprintf(self::CACHE_KEY_USER, $id));
+
+            // If the cached user are still valid, return it
+            if ($cachedUser->isHit()) {
+                return $cachedUser->get();
+            }
+
+            // If the cached users are no longer valid, get them from the Users API
+            $this->loginToAuthServer();
+            $usersRequest = $this->requestFactory->createRequest('GET', new Uri($this->usersApiUrl . '/' . $id));
+            $usersRequest->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
+            $response = $this->httpClient->sendRequest($usersRequest);
+
+            $response = json_decode($response->getBody()->getContents(), true);
+
+            $user = new UserEntity();
+            $user
+                ->setId($response['id'])
+                ->setUsername($response['username'])
+                ->setEmail($response['email'])
+                ->setEmailVerified($response['emailVerified'])
+                ->setCreated(
+                    \DateTime::createFromFormat(\DateTimeInterface::RFC3339, $response['created']) ?: null
+                )
+                ->setRoles($response['roles']);
+
+
+            // Cache the Users
+            $cachedUser
+                ->set($user)
+                ->expiresAfter(self::CACHE_TTL_USERS);
+
+            $this->userCacheService->save($cachedUser);
+
+            return $user;
         } catch (\Throwable | InvalidArgumentException $e) {
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't retrieve the list of Users.");

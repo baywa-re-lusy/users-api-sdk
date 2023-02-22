@@ -1,0 +1,16 @@
+{
+  "id": "c84056a1-8d36-46c4-ae15-e3cb3db18ed2",
+  "username": "john.doe",
+  "email": "john.doe@email.com",
+  "emailVerified": true,
+  "created": "2022-08-11T15:12:09+00:00",
+  "roles": [
+    "role1",
+    "role2"
+  ],
+  "_links": {
+    "self": {
+      "href": "https://my-api.domain.com/users/c84056a1-8d36-46c4-ae15-e3cb3db18ed2"
+    }
+  }
+}
