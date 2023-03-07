@@ -31,6 +31,7 @@ class UsersApiClient
         protected CacheItemPoolInterface $userCacheService,
         protected HttpClient $httpClient,
         protected ?LoggerInterface $logger = null,
+        protected ?string $linkUserSubsidiaryApiUrl = null,
     ) {
         $this->requestFactory = new RequestFactory();
     }
@@ -240,6 +241,50 @@ class UsersApiClient
         } catch (\Throwable | InvalidArgumentException $e) {
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't retrieve the list of Subsidiaries.");
+        }
+    }
+
+    /**
+     * Get the list of linked subsidiaries ID
+     *
+     * @param string $user
+     * @return array
+     * @throws UsersApiException
+     */
+    public function getUserSubsidiaries(string $userId): array
+    {
+        try {
+            if (is_null($this->linkUserSubsidiaryApiUrl)) {
+                throw new \Exception('userSubsidiaryApiUrl not configured for UsersApiClient');
+            }
+
+            $this->loginToAuthServer();
+
+            $request = $this->requestFactory->createRequest(
+                'GET',
+                (new Uri($this->linkUserSubsidiaryApiUrl))->withQuery(
+                    sprintf(
+                        '?user=%s',
+                        $userId
+                    )
+                )
+            );
+            $request = $request->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
+            $request = $request->withHeader('Accept', 'application/json');
+
+            $response = $this->httpClient->sendRequest($request);
+
+            $response     = json_decode($response->getBody()->getContents(), true);
+            $subsidiaries = [];
+
+            foreach ($response['_embedded']['subsidiaryUserLinks'] as $linkData) {
+                $subsidiaries[] = $linkData['subsidiaryId'];
+            }
+
+            return $subsidiaries;
+        } catch (\Throwable | InvalidArgumentException $e) {
+            $this->logger?->error($e->getMessage());
+            throw new UsersApiException("Couldn't retrieve the list of linked subsidiaries for this user.");
         }
     }
 }
