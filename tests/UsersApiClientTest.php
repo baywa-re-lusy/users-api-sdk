@@ -2,6 +2,7 @@
 
 namespace BayWaReLusy\UsersAPI\Test;
 
+use BayWaReLusy\JwtAuthentication\UserIdentity;
 use BayWaReLusy\UsersAPI\SDK\SubsidiaryEntity;
 use BayWaReLusy\UsersAPI\SDK\UserEntity;
 use BayWaReLusy\UsersAPI\SDK\UsersApiClient;
@@ -364,18 +365,38 @@ class UsersApiClientTest extends TestCase
         $this->validateSubsidiariesRequest(0);
     }
 
+    public static function dataProvider_UserFilter(): array
+    {
+        $userId = Uuid::uuid4()->toString();
+
+        $user = new UserEntity();
+        $user->setId($userId);
+
+        $identity = new UserIdentity();
+        $identity->setId($userId);
+
+        return
+            [
+                [$user],
+                [$identity],
+            ];
+    }
+
     /**
      * Test the GET /subsidiaries call.
      * -> Token cache hit
      * -> Subsidiaries not found in cache
-     * -> Filtered by User
+     * -> Filtered by User/Identity
      *
      * @return void
      * @throws UsersApiException
      * @throws Exception
+     *
+     * @dataProvider dataProvider_UserFilter
      */
-    public function testGetSubsidiaries_SubsidiaryCacheMiss_TokenCacheHit_FilteredByUser(): void
-    {
+    public function testGetSubsidiaries_SubsidiaryCacheMiss_TokenCacheHit_FilteredByUser(
+        UserEntity|UserIdentity $user
+    ): void {
         // Mock the Cache hit for the access token call
         $this->mockTokenCacheHit();
 
@@ -386,10 +407,6 @@ class UsersApiClientTest extends TestCase
         $this->guzzleMockHandler->append(
             new Response(200, [], (string)file_get_contents(__DIR__ . '/_files/subsidiaries.json'))
         );
-
-        $userId = Uuid::uuid4()->toString();
-        $user = new UserEntity();
-        $user->setId($userId);
 
         // Execute the call
         $subsidiaries = $this->instance->getSubsidiaries($user);
@@ -402,7 +419,7 @@ class UsersApiClientTest extends TestCase
 
         // Verify that the request is filtered by User
         parse_str($this->httpRequestHistoryContainer[0]['request']->getUri()->getQuery(), $queryParams);
-        $this->assertEquals($userId, $queryParams['user']);
+        $this->assertEquals($user->getId(), $queryParams['user']);
     }
 
     /**
