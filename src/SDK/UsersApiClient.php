@@ -12,14 +12,15 @@ use Psr\Http\Client\ClientInterface as HttpClient;
 
 class UsersApiClient
 {
-    protected const CACHE_KEY_API_TOKEN    = 'usersApiAccessToken';
-    protected const CACHE_KEY_USERS        = 'usersApiUsers';
-    protected const CACHE_KEY_USER         = 'usersApiUser_%s';
-    protected const CACHE_KEY_SUBSIDIARIES = 'usersApiSubsidiaries';
-    protected const CACHE_TTL_USERS        = 600;
-    protected const CACHE_TTL_SUBSIDIARIES = 86400;
-    protected const USERS_URI              = '/users';
-    protected const SUBSIDIARIES_URI       = '/subsidiaries';
+    protected const CACHE_KEY_API_TOKEN            = 'usersApiAccessToken';
+    protected const CACHE_KEY_USERS                = 'usersApiUsers';
+    protected const CACHE_KEY_USER                 = 'usersApiUser_%s';
+    protected const CACHE_KEY_SUBSIDIARIES         = 'usersApiSubsidiaries';
+    protected const CACHE_KEY_SUBSIDIARIES_BY_USER = 'usersApiSubsidiaries_%s';
+    protected const CACHE_TTL_USERS                = 600;
+    protected const CACHE_TTL_SUBSIDIARIES         = 86400;
+    protected const USERS_URI                      = '/users';
+    protected const SUBSIDIARIES_URI               = '/subsidiaries';
 
     protected ?string $accessToken = null;
     protected RequestFactory $requestFactory;
@@ -210,8 +211,13 @@ class UsersApiClient
     public function getSubsidiaries(UserEntity|UserIdentity $user = null): array
     {
         try {
+            $cacheKey = self::CACHE_KEY_SUBSIDIARIES;
+            if (!is_null($user)) {
+                $cacheKey = sprintf(self::CACHE_KEY_SUBSIDIARIES_BY_USER, $user->getId());
+            }
+
             // Get the subsidiaries from the cache
-            $cachedSubsidiaries = $this->userCacheService->getItem(self::CACHE_KEY_SUBSIDIARIES);
+            $cachedSubsidiaries = $this->userCacheService->getItem($cacheKey);
 
             // If the cached users are still valid, return them
             if ($cachedSubsidiaries->isHit()) {
@@ -248,7 +254,7 @@ class UsersApiClient
             // Cache the Subsidiaries
             $cachedSubsidiaries
                 ->set($subsidiaries)
-                ->expiresAfter(self::CACHE_TTL_SUBSIDIARIES);
+                ->expiresAfter(is_null($user) ? self::CACHE_TTL_SUBSIDIARIES : self::CACHE_TTL_USERS);
 
             $this->userCacheService->save($cachedSubsidiaries);
 
