@@ -212,6 +212,8 @@ class UsersApiClient
     {
         try {
             $cacheKey = self::CACHE_KEY_SUBSIDIARIES;
+
+            // If the user-filter is set, change the cache key to include the user ID
             if (!is_null($user)) {
                 $cacheKey = sprintf(self::CACHE_KEY_SUBSIDIARIES_BY_USER, $user->getId());
             }
@@ -251,7 +253,7 @@ class UsersApiClient
                 $subsidiaries[] = $subsidiary;
             }
 
-            // Cache the Subsidiaries
+            // Cache the Subsidiaries. If it's a users Subsidiaries, the TTL is shorter
             $cachedSubsidiaries
                 ->set($subsidiaries)
                 ->expiresAfter(is_null($user) ? self::CACHE_TTL_SUBSIDIARIES : self::CACHE_TTL_USERS);

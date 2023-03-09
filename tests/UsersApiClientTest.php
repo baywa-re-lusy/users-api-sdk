@@ -367,7 +367,7 @@ class UsersApiClientTest extends TestCase
 
     public static function dataProvider_UserFilter(): array
     {
-        $userId = Uuid::uuid4()->toString();
+        $userId = '88e1260c-4ad9-438b-8c42-dfa2397f65bc';
 
         $user = new UserEntity();
         $user->setId($userId);
@@ -401,7 +401,7 @@ class UsersApiClientTest extends TestCase
         $this->mockTokenCacheHit();
 
         // Mock the cache miss for the subsidiaries
-        $this->mockCacheMissForSubsidiariesCall();
+        $this->mockCacheMissForSubsidiariesCall($user);
 
         // Mock the users response
         $this->guzzleMockHandler->append(
@@ -1124,7 +1124,7 @@ class UsersApiClientTest extends TestCase
      * @return void
      * @throws Exception
      */
-    protected function mockCacheMissForSubsidiariesCall(): void
+    protected function mockCacheMissForSubsidiariesCall(UserEntity|UserIdentity $user = null): void
     {
         $subsidiariesCacheItemMock = $this->createMock(CacheItemInterface::class);
         $subsidiariesCacheItemMock
@@ -1145,7 +1145,7 @@ class UsersApiClientTest extends TestCase
         $subsidiariesCacheItemMock
             ->expects($this->once())
             ->method('expiresAfter')
-            ->with(86400);
+            ->with($user ? 600 : 86400);
         $subsidiariesCacheItemMock
             ->expects($this->never())
             ->method('get');
@@ -1153,7 +1153,7 @@ class UsersApiClientTest extends TestCase
         $this->usersCacheMock
             ->expects($this->once())
             ->method('getItem')
-            ->with('usersApiSubsidiaries')
+            ->with($user ? 'usersApiSubsidiaries_' . $user->getId() : 'usersApiSubsidiaries')
             ->will($this->returnValue($subsidiariesCacheItemMock));
         $this->usersCacheMock
             ->expects($this->once())
