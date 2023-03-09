@@ -37,9 +37,15 @@ $usersApiClient = new \BayWaReLusy\UsersAPI\SDK\UsersApiClient(
 $users            = $usersApiClient->getUsers();
 $subsidiaries     = $usersApiClient->getSubsidiaries();
 $user             = $usersApiClient->getUser('<userId>');
+```
+
+Subsidiaries for a particular User can fetched by User Entity:
+```php
 $userSubsidiaries = $usersApiClient->getSubsidiaries($user);
 ```
 
-
-protected HttpClient $httpClient,
-protected ?LoggerInterface $logger = null,
+Or by Identity:
+```php
+$identity         = \BayWaReLusy\JwtAuthentication\UserIdentity::createFromJWT(...);
+$userSubsidiaries = $usersApiClient->getSubsidiaries($identity);
+```

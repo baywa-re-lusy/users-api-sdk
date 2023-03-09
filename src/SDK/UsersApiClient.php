@@ -2,6 +2,7 @@
 
 namespace BayWaReLusy\UsersAPI\SDK;
 
+use BayWaReLusy\JwtAuthentication\UserIdentity;
 use Laminas\Diactoros\RequestFactory;
 use Laminas\Diactoros\Uri;
 use Psr\Cache\CacheItemPoolInterface;
@@ -202,11 +203,11 @@ class UsersApiClient
     /**
      * Get the list of Subsidiaries, optionally filtered by User.
      *
-     * @param UserEntity|null $user
+     * @param UserEntity|UserIdentity|null $user
      * @return SubsidiaryEntity[]
      * @throws UsersApiException
      */
-    public function getSubsidiaries(?UserEntity $user = null): array
+    public function getSubsidiaries(UserEntity|UserIdentity $user = null): array
     {
         try {
             // Get the subsidiaries from the cache
