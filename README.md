@@ -25,8 +25,7 @@ $resultCache = new \Laminas\Cache\Psr\CacheItemPool\CacheItemPoolDecorator(new A
 $httpClient  = new \GuzzleHttp\Client();
 
 $usersApiClient = new \BayWaReLusy\UsersAPI\SDK\UsersApiClient(
-    "<URL to Users API endpoint>",
-    "<URL to Subsidiaries API endpoint>",
+    "<URL to Users API>",
     "<URL to Token API Endpoint>",
     "<Client ID>",
     "<Client Secret>",
@@ -35,9 +34,10 @@ $usersApiClient = new \BayWaReLusy\UsersAPI\SDK\UsersApiClient(
     $httpClient    
 );
 
-$users        = $usersApiClient->getUsers();
-$subsidiaries = $usersApiClient->getSubsidiaries();
-$user         = $usersApiClient->getUser('<userId>');
+$users            = $usersApiClient->getUsers();
+$subsidiaries     = $usersApiClient->getSubsidiaries();
+$user             = $usersApiClient->getUser('<userId>');
+$userSubsidiaries = $usersApiClient->getSubsidiaries($user);
 ```
 
 

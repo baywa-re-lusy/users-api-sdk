@@ -17,20 +17,21 @@ class UsersApiClient
     protected const CACHE_KEY_SUBSIDIARIES = 'usersApiSubsidiaries';
     protected const CACHE_TTL_USERS        = 600;
     protected const CACHE_TTL_SUBSIDIARIES = 86400;
+    protected const USERS_URI              = '/users';
+    protected const SUBSIDIARIES_URI       = '/subsidiaries';
 
     protected ?string $accessToken = null;
     protected RequestFactory $requestFactory;
 
     public function __construct(
         protected string $usersApiUrl,
-        protected string $subsidiariesApiUrl,
         protected string $tokenUrl,
         protected string $clientId,
         protected string $clientSecret,
         protected CacheItemPoolInterface $tokenCacheService,
         protected CacheItemPoolInterface $userCacheService,
         protected HttpClient $httpClient,
-        protected ?LoggerInterface $logger = null,
+        protected ?LoggerInterface $logger = null
     ) {
         $this->requestFactory = new RequestFactory();
     }
@@ -100,7 +101,10 @@ class UsersApiClient
             // If the cached users are no longer valid, get them from the Users API
             $this->loginToAuthServer();
 
-            $request = $this->requestFactory->createRequest('GET', new Uri($this->usersApiUrl));
+            $request = $this->requestFactory->createRequest(
+                'GET',
+                new Uri(rtrim($this->usersApiUrl, '/') . self::USERS_URI)
+            );
             $request = $request->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
             $request = $request->withHeader('Accept', 'application/json');
 
@@ -159,7 +163,10 @@ class UsersApiClient
             // If the cached users are no longer valid, get them from the Users API
             $this->loginToAuthServer();
 
-            $request = $this->requestFactory->createRequest('GET', new Uri($this->usersApiUrl . '/' . $id));
+            $request = $this->requestFactory->createRequest(
+                'GET',
+                new Uri(rtrim($this->usersApiUrl, '/') . self::USERS_URI . '/' . $id)
+            );
             $request = $request->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
             $request = $request->withHeader('Accept', 'application/json');
 
@@ -193,12 +200,13 @@ class UsersApiClient
     }
 
     /**
-     * Get the list of Subsidiaries.
+     * Get the list of Subsidiaries, optionally filtered by User.
      *
+     * @param UserEntity|null $user
      * @return SubsidiaryEntity[]
      * @throws UsersApiException
      */
-    public function getSubsidiaries(): array
+    public function getSubsidiaries(?UserEntity $user = null): array
     {
         try {
             // Get the subsidiaries from the cache
@@ -211,7 +219,14 @@ class UsersApiClient
 
             $this->loginToAuthServer();
 
-            $request = $this->requestFactory->createRequest('GET', new Uri($this->subsidiariesApiUrl));
+            $url = rtrim($this->usersApiUrl, '/') . self::SUBSIDIARIES_URI;
+
+            // If a user is specified, filter the subsidiaries by user
+            if (!is_null($user)) {
+                $url .= '?user=' . $user->getId();
+            }
+
+            $request = $this->requestFactory->createRequest('GET', new Uri($url));
             $request = $request->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
             $request = $request->withHeader('Accept', 'application/json');
 

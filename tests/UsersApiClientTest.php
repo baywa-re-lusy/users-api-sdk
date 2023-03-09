@@ -19,6 +19,7 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
 use Psr\Log\LoggerInterface;
 use GuzzleHttp\Client as HttpClient;
+use Ramsey\Uuid\Uuid;
 
 class UsersApiClientTest extends TestCase
 {
@@ -41,8 +42,7 @@ class UsersApiClientTest extends TestCase
         $handlerStack->push(Middleware::history($this->httpRequestHistoryContainer));
 
         $this->instance = new UsersApiClient(
-            'https://api.domain.com/users',
-            'https://api.domain.com/subsidiaries',
+            'https://api.domain.com',
             'https://api.domain.com/token',
             'client-id',
             'client-secret',
@@ -362,6 +362,47 @@ class UsersApiClientTest extends TestCase
 
         // Verify if HTTP requests have been made correctly
         $this->validateSubsidiariesRequest(0);
+    }
+
+    /**
+     * Test the GET /subsidiaries call.
+     * -> Token cache hit
+     * -> Subsidiaries not found in cache
+     * -> Filtered by User
+     *
+     * @return void
+     * @throws UsersApiException
+     * @throws Exception
+     */
+    public function testGetSubsidiaries_SubsidiaryCacheMiss_TokenCacheHit_FilteredByUser(): void
+    {
+        // Mock the Cache hit for the access token call
+        $this->mockTokenCacheHit();
+
+        // Mock the cache miss for the subsidiaries
+        $this->mockCacheMissForSubsidiariesCall();
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(
+            new Response(200, [], (string)file_get_contents(__DIR__ . '/_files/subsidiaries.json'))
+        );
+
+        $userId = Uuid::uuid4()->toString();
+        $user = new UserEntity();
+        $user->setId($userId);
+
+        // Execute the call
+        $subsidiaries = $this->instance->getSubsidiaries($user);
+
+        // Verify resulting users
+        $this->validateSubsidiaryProperties($subsidiaries);
+
+        // Verify if HTTP requests have been made correctly
+        $this->validateSubsidiariesRequest(0);
+
+        // Verify that the request is filtered by User
+        parse_str($this->httpRequestHistoryContainer[0]['request']->getUri()->getQuery(), $queryParams);
+        $this->assertEquals($userId, $queryParams['user']);
     }
 
     /**
