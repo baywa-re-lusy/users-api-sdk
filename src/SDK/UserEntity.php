@@ -13,6 +13,8 @@ class UserEntity
     protected bool $emailVerified;
     protected ?\DateTime $created;
     /** @var string[] */
+    protected array $subsidiaryIds = [];
+    /** @var string[] */
     protected array $roles = [];
 
     /**
@@ -102,6 +104,24 @@ class UserEntity
     public function setCreated(?\DateTime $created): UserEntity
     {
         $this->created = $created;
+        return $this;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getSubsidiaryIds(): array
+    {
+        return $this->subsidiaryIds;
+    }
+
+    /**
+     * @param string[] $subsidiaryIds
+     * @return UserEntity
+     */
+    public function setSubsidiaryIds(array $subsidiaryIds): UserEntity
+    {
+        $this->subsidiaryIds = $subsidiaryIds;
         return $this;
     }
 
