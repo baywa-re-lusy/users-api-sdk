@@ -88,13 +88,15 @@ class UsersApiClientTest extends TestCase
                     ->setEmail('john.doe@email.com')
                     ->setEmailVerified(true)
                     ->setUsername('john.doe')
-                    ->setRoles(['role1', 'role2']),
+                    ->setRoles(['role1', 'role2'])
+                    ->setSubsidiaryIds(['3', '4', '5']),
                 (new UserEntity())
                     ->setId('05991cfa-84a4-4c7f-9486-7d25c6119238')
                     ->setEmail('jane.doe@email.com')
                     ->setEmailVerified(false)
                     ->setUsername('jane.doe')
-                    ->setRoles(['role2', 'role3']),
+                    ->setRoles(['role2', 'role3'])
+                    ->setSubsidiaryIds(['5', '6', '7']),
             ]));
 
         $this->usersCacheMock
@@ -609,6 +611,7 @@ class UsersApiClientTest extends TestCase
                     ->setEmailVerified(true)
                     ->setUsername('john.doe')
                     ->setRoles(['role1', 'role2'])
+                    ->setSubsidiaryIds(['3', '4', '5'])
             ));
 
         $this->usersCacheMock
@@ -871,6 +874,9 @@ class UsersApiClientTest extends TestCase
 
         $this->assertEquals(['role1', 'role2'], $users[0]->getRoles());
         $this->assertEquals(['role2', 'role3'], $users[1]->getRoles());
+
+        $this->assertEquals(['3', '4', '5'], $users[0]->getSubsidiaryIds());
+        $this->assertEquals(['5', '6', '7'], $users[1]->getSubsidiaryIds());
     }
 
     protected function validateUserProperties(UserEntity $user): void
@@ -880,6 +886,7 @@ class UsersApiClientTest extends TestCase
         $this->assertEquals('john.doe@email.com', $user->getEmail());
         $this->assertTrue($user->getEmailVerified());
         $this->assertEquals(['role1', 'role2'], $user->getRoles());
+        $this->assertEquals(['3', '4', '5'], $user->getSubsidiaryIds());
     }
 
     /**

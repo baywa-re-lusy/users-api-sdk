@@ -125,7 +125,8 @@ class UsersApiClient
                     ->setCreated(
                         \DateTime::createFromFormat(\DateTimeInterface::RFC3339, $userData['created']) ?: null
                     )
-                    ->setRoles($userData['roles']);
+                    ->setRoles($userData['roles'])
+                    ->setSubsidiaryIds($userData['subsidiaryIds']);
 
                 $users[] = $user;
             }
@@ -184,7 +185,8 @@ class UsersApiClient
                 ->setCreated(
                     \DateTime::createFromFormat(\DateTimeInterface::RFC3339, $response['created']) ?: null
                 )
-                ->setRoles($response['roles']);
+                ->setRoles($response['roles'])
+                ->setSubsidiaryIds($response['subsidiaryIds']);
 
 
             // Cache the Users
