@@ -206,19 +206,13 @@ class UsersApiClient
     /**
      * Get the list of Subsidiaries, optionally filtered by User.
      *
-     * @param UserEntity|UserIdentity|null $user
      * @return SubsidiaryEntity[]
      * @throws UsersApiException
      */
-    public function getSubsidiaries(UserEntity|UserIdentity $user = null): array
+    public function getSubsidiaries(): array
     {
         try {
             $cacheKey = self::CACHE_KEY_SUBSIDIARIES;
-
-            // If the user-filter is set, change the cache key to include the user ID
-            if (!is_null($user)) {
-                $cacheKey = sprintf(self::CACHE_KEY_SUBSIDIARIES_BY_USER, $user->getId());
-            }
 
             // Get the subsidiaries from the cache
             $cachedSubsidiaries = $this->userCacheService->getItem($cacheKey);
@@ -231,11 +225,6 @@ class UsersApiClient
             $this->loginToAuthServer();
 
             $url = rtrim($this->usersApiUrl, '/') . self::SUBSIDIARIES_URI;
-
-            // If a user is specified, filter the subsidiaries by user
-            if (!is_null($user)) {
-                $url .= '?user=' . $user->getId();
-            }
 
             $request = $this->requestFactory->createRequest('GET', new Uri($url));
             $request = $request->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
@@ -258,7 +247,7 @@ class UsersApiClient
             // Cache the Subsidiaries. If it's a users Subsidiaries, the TTL is shorter
             $cachedSubsidiaries
                 ->set($subsidiaries)
-                ->expiresAfter(is_null($user) ? self::CACHE_TTL_SUBSIDIARIES : self::CACHE_TTL_USERS);
+                ->expiresAfter(self::CACHE_TTL_SUBSIDIARIES);
 
             $this->userCacheService->save($cachedSubsidiaries);
 

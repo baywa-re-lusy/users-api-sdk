@@ -385,46 +385,6 @@ class UsersApiClientTest extends TestCase
     }
 
     /**
-     * Test the GET /subsidiaries call.
-     * -> Token cache hit
-     * -> Subsidiaries not found in cache
-     * -> Filtered by User/Identity
-     *
-     * @return void
-     * @throws UsersApiException
-     * @throws Exception
-     *
-     * @dataProvider dataProvider_UserFilter
-     */
-    public function testGetSubsidiaries_SubsidiaryCacheMiss_TokenCacheHit_FilteredByUser(
-        UserEntity|UserIdentity $user
-    ): void {
-        // Mock the Cache hit for the access token call
-        $this->mockTokenCacheHit();
-
-        // Mock the cache miss for the subsidiaries
-        $this->mockCacheMissForSubsidiariesCall($user);
-
-        // Mock the users response
-        $this->guzzleMockHandler->append(
-            new Response(200, [], (string)file_get_contents(__DIR__ . '/_files/subsidiaries.json'))
-        );
-
-        // Execute the call
-        $subsidiaries = $this->instance->getSubsidiaries($user);
-
-        // Verify resulting users
-        $this->validateSubsidiaryProperties($subsidiaries);
-
-        // Verify if HTTP requests have been made correctly
-        $this->validateSubsidiariesRequest(0);
-
-        // Verify that the request is filtered by User
-        parse_str($this->httpRequestHistoryContainer[0]['request']->getUri()->getQuery(), $queryParams);
-        $this->assertEquals($user->getId(), $queryParams['user']);
-    }
-
-    /**
      * Test the GET /users call.
      * -> Token cache miss
      * -> Subsidiaries not found in cache
