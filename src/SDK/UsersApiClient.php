@@ -98,7 +98,7 @@ class UsersApiClient
      * Get the list of Users.
      *
      * @param bool $refreshCache If true, users are fetched from the API and the cache is refreshed
-     * @return array
+     * @return UserEntity[]
      * @throws UsersApiException
      */
     public function getUsers(bool $refreshCache = false): array
