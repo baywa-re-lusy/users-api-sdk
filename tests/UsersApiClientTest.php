@@ -21,6 +21,7 @@ use Psr\Http\Message\UriInterface;
 use Psr\Log\LoggerInterface;
 use GuzzleHttp\Client as HttpClient;
 use Ramsey\Uuid\Uuid;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class UsersApiClientTest extends TestCase
 {
@@ -28,6 +29,7 @@ class UsersApiClientTest extends TestCase
     protected MockObject $tokenCacheMock;
     protected MockObject $usersCacheMock;
     protected MockObject $loggerMock;
+    protected MockObject $consoleMock;
     protected MockHandler $guzzleMockHandler;
     protected array $httpRequestHistoryContainer = [];
 
@@ -36,6 +38,7 @@ class UsersApiClientTest extends TestCase
         $this->tokenCacheMock  = $this->createMock(CacheItemPoolInterface::class);
         $this->usersCacheMock  = $this->createMock(CacheItemPoolInterface::class);
         $this->loggerMock      = $this->createMock(LoggerInterface::class);
+        $this->consoleMock     = $this->createMock(OutputInterface::class);
 
         $this->guzzleMockHandler = new MockHandler();
         $handlerStack            = HandlerStack::create($this->guzzleMockHandler);
@@ -110,6 +113,75 @@ class UsersApiClientTest extends TestCase
 
         // Execute the call
         $users = $this->instance->getUsers();
+
+        // Verify resulting users
+        $this->validateUsersProperties($users);
+    }
+
+    /**
+     * Test the GET /users call.
+     * -> Users could be fetched from the cache but refreshCache option is enabled
+     * -> No call to token endpoint or token cache necessary
+     *
+     * @return void
+     * @throws UsersApiException
+     * @throws Exception
+     */
+    public function testGetUsers_UsersCacheRefresh(): void
+    {
+        $this->instance->setConsole($this->consoleMock);
+        $this->consoleMock
+            ->expects($this->exactly(2))
+            ->method('writeln');
+
+        // If the User cache hits, there is no call to the token cache
+        $this->mockTokenCacheHit();
+
+        // Users Cache is bypassed and cache entry is refreshed
+        $usersCacheItemMock = $this->createMock(CacheItemInterface::class);
+        $usersCacheItemMock
+            ->expects($this->never())
+            ->method('isHit');
+        $usersCacheItemMock
+            ->expects($this->once())
+            ->method('set')
+            ->with($this->callback(function ($value) {
+                return
+                    $value[0]->getId() === 'c84056a1-8d36-46c4-ae15-e3cb3db18ed2' &&
+                    $value[0]->getUsername() === 'john.doe' &&
+                    $value[0]->getEmail() === 'john.doe@email.com' &&
+                    $value[0]->getEmailVerified() === true &&
+                    $value[1]->getId() === '05991cfa-84a4-4c7f-9486-7d25c6119238' &&
+                    $value[1]->getUsername() === 'jane.doe' &&
+                    $value[1]->getEmail() === 'jane.doe@email.com' &&
+                    $value[1]->getEmailVerified() === false;
+            }))
+            ->will($this->returnSelf());
+        $usersCacheItemMock
+            ->expects($this->once())
+            ->method('expiresAfter')
+            ->with(600);
+        $usersCacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->usersCacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiUsers')
+            ->will($this->returnValue($usersCacheItemMock));
+        $this->usersCacheMock
+            ->expects($this->once())
+            ->method('save')
+            ->with($usersCacheItemMock);
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(
+            new Response(200, [], (string)file_get_contents(__DIR__ . '/_files/users.json'))
+        );
+
+        // Execute the call
+        $users = $this->instance->getUsers(true);
 
         // Verify resulting users
         $this->validateUsersProperties($users);
@@ -395,7 +467,7 @@ class UsersApiClientTest extends TestCase
      */
     public function testGetSubsidiaries_SubsidiaryCacheMiss_TokenCacheMiss(): void
     {
-        // Mock the Cache hit for the access token call
+        // Mock the Cache miss for the access token call
         $this->mockTokenCacheMiss();
 
         // Mock the cache miss for the subsidiaries
@@ -416,6 +488,68 @@ class UsersApiClientTest extends TestCase
         // Verify if HTTP requests have been made correctly
         $this->validateTokenRequest();
         $this->validateSubsidiariesRequest(1);
+    }
+
+    /**
+     * Test the GET /users call.
+     * -> Token cache miss
+     * -> Subsidiaries not found in cache
+     *
+     * @return void
+     * @throws UsersApiException
+     * @throws Exception
+     */
+    public function testGetSubsidiaries_SubsidiaryCacheRefresh(): void
+    {
+        $this->mockTokenCacheHit();
+
+        // Mock the cache miss for the subsidiaries
+        $subsidiariesCacheItemMock = $this->createMock(CacheItemInterface::class);
+        $subsidiariesCacheItemMock
+            ->expects($this->never())
+            ->method('isHit');
+        $subsidiariesCacheItemMock
+            ->expects($this->once())
+            ->method('set')
+            ->with($this->callback(function ($value) {
+                return
+                    $value[0]->getId() === '1' &&
+                    $value[0]->getName() === 'Subsidiary 1' &&
+                    $value[1]->getId() === '2' &&
+                    $value[1]->getName() === 'Subsidiary 2';
+            }))
+            ->will($this->returnSelf());
+        $subsidiariesCacheItemMock
+            ->expects($this->once())
+            ->method('expiresAfter')
+            ->with(86400);
+        $subsidiariesCacheItemMock
+            ->expects($this->never())
+            ->method('get');
+
+        $this->usersCacheMock
+            ->expects($this->once())
+            ->method('getItem')
+            ->with('usersApiSubsidiaries')
+            ->will($this->returnValue($subsidiariesCacheItemMock));
+        $this->usersCacheMock
+            ->expects($this->once())
+            ->method('save')
+            ->with($subsidiariesCacheItemMock);
+
+        // Mock the users response
+        $this->guzzleMockHandler->append(
+            new Response(200, [], (string)file_get_contents(__DIR__ . '/_files/subsidiaries.json'))
+        );
+
+        // Execute the call
+        $subsidiaries = $this->instance->getSubsidiaries(true);
+
+        // Verification
+        $this->validateSubsidiaryProperties($subsidiaries);
+
+        // Verify if HTTP requests have been made correctly
+        $this->validateSubsidiariesRequest(0);
     }
 
     /**
@@ -1091,7 +1225,7 @@ class UsersApiClientTest extends TestCase
      * @return void
      * @throws Exception
      */
-    protected function mockCacheMissForSubsidiariesCall(UserEntity|UserIdentity $user = null): void
+    protected function mockCacheMissForSubsidiariesCall(): void
     {
         $subsidiariesCacheItemMock = $this->createMock(CacheItemInterface::class);
         $subsidiariesCacheItemMock
@@ -1112,7 +1246,7 @@ class UsersApiClientTest extends TestCase
         $subsidiariesCacheItemMock
             ->expects($this->once())
             ->method('expiresAfter')
-            ->with($user ? 600 : 86400);
+            ->with(86400);
         $subsidiariesCacheItemMock
             ->expects($this->never())
             ->method('get');
@@ -1120,7 +1254,7 @@ class UsersApiClientTest extends TestCase
         $this->usersCacheMock
             ->expects($this->once())
             ->method('getItem')
-            ->with($user ? 'usersApiSubsidiaries_' . $user->getId() : 'usersApiSubsidiaries')
+            ->with('usersApiSubsidiaries')
             ->will($this->returnValue($subsidiariesCacheItemMock));
         $this->usersCacheMock
             ->expects($this->once())

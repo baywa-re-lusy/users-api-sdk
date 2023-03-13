@@ -38,3 +38,25 @@ $users            = $usersApiClient->getUsers();
 $subsidiaries     = $usersApiClient->getSubsidiaries();
 $user             = $usersApiClient->getUser('<userId>');
 ```
+
+## Cache Refresh via Console commands
+
+This SDK contains Symfony Console commands to refresh the User/Subsidiary cache. You can include the Console commands
+into your application:
+
+```php
+$cliApp = new \Symfony\Component\Console\Application();
+
+/** @var \Psr\Container\ContainerInterface $serviceManager */
+$serviceManager = ...
+
+$cliApp->add(new \BayWaReLusy\UsersAPI\SDK\Console\RefreshUserCache($usersApiClient));
+$cliApp->add(new \BayWaReLusy\UsersAPI\SDK\Console\RefreshSubsidiaryCache($usersApiClient)));
+```
+
+And then run the Console commands with:
+
+```shell
+./console users-api-sdk:refresh-user-cache
+./console users-api-sdk:refresh-subsidiary-cache
+```
