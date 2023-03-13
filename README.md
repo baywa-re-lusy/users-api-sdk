@@ -47,9 +47,6 @@ into your application:
 ```php
 $cliApp = new \Symfony\Component\Console\Application();
 
-/** @var \Psr\Container\ContainerInterface $serviceManager */
-$serviceManager = ...
-
 $cliApp->add(new \BayWaReLusy\UsersAPI\SDK\Console\RefreshUserCache($usersApiClient));
 $cliApp->add(new \BayWaReLusy\UsersAPI\SDK\Console\RefreshSubsidiaryCache($usersApiClient)));
 ```
