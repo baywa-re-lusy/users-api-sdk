@@ -9,21 +9,22 @@ use Psr\Cache\CacheItemPoolInterface;
 use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Psr\Http\Client\ClientInterface as HttpClient;
+use Symfony\Component\Console\Output\OutputInterface as Console;
 
 class UsersApiClient
 {
-    protected const CACHE_KEY_API_TOKEN            = 'usersApiAccessToken';
-    protected const CACHE_KEY_USERS                = 'usersApiUsers';
-    protected const CACHE_KEY_USER                 = 'usersApiUser_%s';
-    protected const CACHE_KEY_SUBSIDIARIES         = 'usersApiSubsidiaries';
-    protected const CACHE_KEY_SUBSIDIARIES_BY_USER = 'usersApiSubsidiaries_%s';
-    protected const CACHE_TTL_USERS                = 600;
-    protected const CACHE_TTL_SUBSIDIARIES         = 86400;
-    protected const USERS_URI                      = '/users';
-    protected const SUBSIDIARIES_URI               = '/subsidiaries';
+    protected const CACHE_KEY_API_TOKEN    = 'usersApiAccessToken';
+    protected const CACHE_KEY_USERS        = 'usersApiUsers';
+    protected const CACHE_KEY_USER         = 'usersApiUser_%s';
+    protected const CACHE_KEY_SUBSIDIARIES = 'usersApiSubsidiaries';
+    protected const CACHE_TTL_USERS        = 600;
+    protected const CACHE_TTL_SUBSIDIARIES = 86400;
+    protected const USERS_URI              = '/users';
+    protected const SUBSIDIARIES_URI       = '/subsidiaries';
 
     protected ?string $accessToken = null;
     protected RequestFactory $requestFactory;
+    protected ?Console $console = null;
 
     public function __construct(
         protected string $usersApiUrl,
@@ -36,6 +37,16 @@ class UsersApiClient
         protected ?LoggerInterface $logger = null
     ) {
         $this->requestFactory = new RequestFactory();
+    }
+
+    /**
+     * @param Console $console
+     * @return UsersApiClient
+     */
+    public function setConsole(Console $console): UsersApiClient
+    {
+        $this->console = $console;
+        return $this;
     }
 
     /**
@@ -86,18 +97,32 @@ class UsersApiClient
     /**
      * Get the list of Users.
      *
+     * @param bool $refreshCache If true, users are fetched from the API and the cache is refreshed
      * @return UserEntity[]
      * @throws UsersApiException
      */
-    public function getUsers(): array
+    public function getUsers(bool $refreshCache = false): array
     {
         try {
+            $this->console?->writeln(sprintf(
+                "[%s] Fetching users from Users API...",
+                (new \DateTime())->format(\DateTimeInterface::RFC3339)
+            ));
+
             // Get the users from the cache
             $cachedUsers = $this->userCacheService->getItem(self::CACHE_KEY_USERS);
 
             // If the cached users are still valid, return them
-            if ($cachedUsers->isHit()) {
-                return $cachedUsers->get();
+            if (!$refreshCache && $cachedUsers->isHit()) {
+                $cacheResult = $cachedUsers->get();
+
+                $this->console?->writeln(sprintf(
+                    "[%s] Fetched %s users from cache.",
+                    (new \DateTime())->format(\DateTimeInterface::RFC3339),
+                    count($cacheResult)
+                ));
+
+                return $cacheResult;
             }
 
             // If the cached users are no longer valid, get them from the Users API
@@ -137,6 +162,12 @@ class UsersApiClient
                 ->expiresAfter(self::CACHE_TTL_USERS);
 
             $this->userCacheService->save($cachedUsers);
+
+            $this->console?->writeln(sprintf(
+                "[%s] Fetched %s users from API.",
+                (new \DateTime())->format(\DateTimeInterface::RFC3339),
+                count($users)
+            ));
 
             return $users;
         } catch (\Throwable | InvalidArgumentException $e) {
@@ -206,20 +237,34 @@ class UsersApiClient
     /**
      * Get the list of Subsidiaries, optionally filtered by User.
      *
+     * @param bool $refreshCache If true, users are fetched from the API and the cache is refreshed
      * @return SubsidiaryEntity[]
      * @throws UsersApiException
      */
-    public function getSubsidiaries(): array
+    public function getSubsidiaries(bool $refreshCache = false): array
     {
         try {
+            $this->console?->writeln(sprintf(
+                "[%s] Fetching subsidiaries from Users API...",
+                (new \DateTime())->format(\DateTimeInterface::RFC3339)
+            ));
+
             $cacheKey = self::CACHE_KEY_SUBSIDIARIES;
 
             // Get the subsidiaries from the cache
             $cachedSubsidiaries = $this->userCacheService->getItem($cacheKey);
 
             // If the cached users are still valid, return them
-            if ($cachedSubsidiaries->isHit()) {
-                return $cachedSubsidiaries->get();
+            if (!$refreshCache && $cachedSubsidiaries->isHit()) {
+                $cacheResult = $cachedSubsidiaries->get();
+
+                $this->console?->writeln(sprintf(
+                    "[%s] Fetched %s subsidiaries from cache.",
+                    (new \DateTime())->format(\DateTimeInterface::RFC3339),
+                    count($cacheResult)
+                ));
+
+                return $cacheResult;
             }
 
             $this->loginToAuthServer();
@@ -250,6 +295,12 @@ class UsersApiClient
                 ->expiresAfter(self::CACHE_TTL_SUBSIDIARIES);
 
             $this->userCacheService->save($cachedSubsidiaries);
+
+            $this->console?->writeln(sprintf(
+                "[%s] Fetched %s subsidiaries from API.",
+                (new \DateTime())->format(\DateTimeInterface::RFC3339),
+                count($subsidiaries)
+            ));
 
             return $subsidiaries;
         } catch (\Throwable | InvalidArgumentException $e) {
