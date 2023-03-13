@@ -3,14 +3,14 @@
 namespace BayWaReLusy\UsersAPI\SDK\Console;
 
 use BayWaReLusy\UsersAPI\SDK\UsersApiClient;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
+#[AsCommand(name: 'users-api-sdk:refresh-user-cache')]
 class RefreshUserCache extends Command
 {
-    protected static $defaultName = 'users-api-sdk:refresh-user-cache';
-
     public function __construct(
         protected UsersApiClient $usersApiClient
     ) {

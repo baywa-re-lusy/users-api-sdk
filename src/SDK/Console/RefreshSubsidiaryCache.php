@@ -6,11 +6,11 @@ use BayWaReLusy\UsersAPI\SDK\UsersApiClient;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 
+#[AsCommand(name: 'users-api-sdk:refresh-subsidiary-cache')]
 class RefreshSubsidiaryCache extends Command
 {
-    protected static $defaultName = 'users-api-sdk:refresh-subsidiary-cache';
-
     public function __construct(
         protected UsersApiClient $usersApiClient
     ) {
