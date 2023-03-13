@@ -126,19 +126,6 @@ class UserEntity
     }
 
     /**
-     * @param string $subsidiaryId
-     * @return UserEntity
-     */
-    public function addSubsidiaryId(string $subsidiaryId): UserEntity
-    {
-        if (!in_array($subsidiaryId, $this->subsidiaryIds)) {
-            $this->subsidiaryIds[] = $subsidiaryId;
-        }
-
-        return $this;
-    }
-
-    /**
      * @return string[]
      */
     public function getRoles(): array
