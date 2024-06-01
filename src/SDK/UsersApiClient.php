@@ -2,7 +2,6 @@
 
 namespace BayWaReLusy\UsersAPI\SDK;
 
-use BayWaReLusy\JwtAuthentication\UserIdentity;
 use Laminas\Diactoros\RequestFactory;
 use Laminas\Diactoros\Uri;
 use Psr\Cache\CacheItemPoolInterface;

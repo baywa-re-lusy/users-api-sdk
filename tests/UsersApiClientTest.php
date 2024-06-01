@@ -2,7 +2,6 @@
 
 namespace BayWaReLusy\UsersAPI\Test;
 
-use BayWaReLusy\JwtAuthentication\UserIdentity;
 use BayWaReLusy\UsersAPI\SDK\SubsidiaryEntity;
 use BayWaReLusy\UsersAPI\SDK\UserEntity;
 use BayWaReLusy\UsersAPI\SDK\UsersApiClient;
@@ -437,23 +436,6 @@ class UsersApiClientTest extends TestCase
 
         // Verify if HTTP requests have been made correctly
         $this->validateSubsidiariesRequest(0);
-    }
-
-    public static function dataProvider_UserFilter(): array
-    {
-        $userId = '88e1260c-4ad9-438b-8c42-dfa2397f65bc';
-
-        $user = new UserEntity();
-        $user->setId($userId);
-
-        $identity = new UserIdentity();
-        $identity->setId($userId);
-
-        return
-            [
-                [$user],
-                [$identity],
-            ];
     }
 
     /**
