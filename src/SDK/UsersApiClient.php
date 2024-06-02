@@ -4,6 +4,7 @@ namespace BayWaReLusy\UsersAPI\SDK;
 
 use Laminas\Diactoros\RequestFactory;
 use Laminas\Diactoros\Uri;
+use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
@@ -16,8 +17,8 @@ class UsersApiClient
     protected const CACHE_KEY_USERS        = 'usersApiUsers';
     protected const CACHE_KEY_USER         = 'usersApiUser_%s';
     protected const CACHE_KEY_SUBSIDIARIES = 'usersApiSubsidiaries';
-    protected const CACHE_TTL_USERS        = 600;
-    protected const CACHE_TTL_SUBSIDIARIES = 86400;
+    protected const CACHE_TTL_USERS        = 0;
+    protected const CACHE_TTL_SUBSIDIARIES = 0;
     protected const USERS_URI              = '/users';
     protected const SUBSIDIARIES_URI       = '/subsidiaries';
 
@@ -240,7 +241,7 @@ class UsersApiClient
      * @return SubsidiaryEntity[]
      * @throws UsersApiException
      */
-    public function getSubsidiaries(bool $refreshCache = false): array
+    public function getSubsidiaries(bool $refreshCache = false, UserEntity $user = null): array
     {
         try {
             $this->console?->writeln(sprintf(
@@ -248,63 +249,97 @@ class UsersApiClient
                 (new \DateTime())->format(\DateTimeInterface::RFC3339)
             ));
 
-            $cacheKey = self::CACHE_KEY_SUBSIDIARIES;
-
-            // Get the subsidiaries from the cache
+            // Get the Cache item
+            $cacheKey           = self::CACHE_KEY_SUBSIDIARIES;
             $cachedSubsidiaries = $this->userCacheService->getItem($cacheKey);
 
-            // If the cached users are still valid, return them
-            if (!$refreshCache && $cachedSubsidiaries->isHit()) {
-                $cacheResult = $cachedSubsidiaries->get();
+            // Get Subsidiaries from Cache
+            if (!$refreshCache) {
+                // Cache hit
+                if ($cachedSubsidiaries->isHit()) {
+                    /** @var SubsidiaryEntity[] $cacheResult */
+                    $cacheResult = $cachedSubsidiaries->get();
 
-                $this->console?->writeln(sprintf(
-                    "[%s] Fetched %s subsidiaries from cache.",
-                    (new \DateTime())->format(\DateTimeInterface::RFC3339),
-                    count($cacheResult)
-                ));
+                    $this->console?->writeln(sprintf(
+                        "[%s] Fetched %s subsidiaries from cache.",
+                        (new \DateTime())->format(\DateTimeInterface::RFC3339),
+                        count($cacheResult)
+                    ));
 
-                return $cacheResult;
+                    return is_null($user) ?
+                        $cacheResult :
+                        $this->filterSubsidiariesByUser($cacheResult, $user);
+                }
             }
 
-            $this->loginToAuthServer();
+            // Cache miss
+            $subsidiaries = $this->fetchSubsidiariesFromApi($cachedSubsidiaries);
 
-            $url = rtrim($this->usersApiUrl, '/') . self::SUBSIDIARIES_URI;
-
-            $request = $this->requestFactory->createRequest('GET', new Uri($url));
-            $request = $request->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
-            $request = $request->withHeader('Accept', 'application/json');
-
-            $response = $this->httpClient->sendRequest($request);
-
-            $response     = json_decode($response->getBody()->getContents(), true);
-            $subsidiaries = [];
-
-            foreach ($response['_embedded']['subsidiaries'] as $subsidiaryData) {
-                $subsidiary = new SubsidiaryEntity();
-                $subsidiary
-                    ->setId($subsidiaryData['id'])
-                    ->setName($subsidiaryData['name']);
-
-                $subsidiaries[] = $subsidiary;
-            }
-
-            // Cache the Subsidiaries. If it's a users Subsidiaries, the TTL is shorter
-            $cachedSubsidiaries
-                ->set($subsidiaries)
-                ->expiresAfter(self::CACHE_TTL_SUBSIDIARIES);
-
-            $this->userCacheService->save($cachedSubsidiaries);
-
-            $this->console?->writeln(sprintf(
-                "[%s] Fetched %s subsidiaries from API.",
-                (new \DateTime())->format(\DateTimeInterface::RFC3339),
-                count($subsidiaries)
-            ));
-
-            return $subsidiaries;
+            // Check if the result must be filtered by user
+            return is_null($user) ?
+                $subsidiaries :
+                $this->filterSubsidiariesByUser($subsidiaries, $user);
         } catch (\Throwable | InvalidArgumentException $e) {
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't retrieve the list of Subsidiaries.");
         }
+    }
+
+    /**
+     * @param CacheItemInterface $cachedSubsidiaries
+     * @return SubsidiaryEntity[]
+     * @throws UsersApiException
+     * @throws \Psr\Http\Client\ClientExceptionInterface
+     */
+    protected function fetchSubsidiariesFromApi(CacheItemInterface $cachedSubsidiaries): array
+    {
+        $this->loginToAuthServer();
+
+        $url = rtrim($this->usersApiUrl, '/') . self::SUBSIDIARIES_URI;
+
+        $request = $this->requestFactory->createRequest('GET', new Uri($url));
+        $request = $request->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
+        $request = $request->withHeader('Accept', 'application/json');
+
+        $response = $this->httpClient->sendRequest($request);
+
+        $response     = json_decode($response->getBody()->getContents(), true);
+        $subsidiaries = [];
+
+        foreach ($response['_embedded']['subsidiaries'] as $subsidiaryData) {
+            $subsidiary = new SubsidiaryEntity();
+            $subsidiary
+                ->setId($subsidiaryData['id'])
+                ->setName($subsidiaryData['name']);
+
+            $subsidiaries[] = $subsidiary;
+        }
+
+        // Cache the Subsidiaries. If it's a users Subsidiaries, the TTL is shorter
+        $cachedSubsidiaries
+            ->set($subsidiaries)
+            ->expiresAfter(self::CACHE_TTL_SUBSIDIARIES);
+
+        $this->userCacheService->save($cachedSubsidiaries);
+
+        $this->console?->writeln(sprintf(
+            "[%s] Fetched %s subsidiaries from API.",
+            (new \DateTime())->format(\DateTimeInterface::RFC3339),
+            count($subsidiaries)
+        ));
+
+        return $subsidiaries;
+    }
+
+    /**
+     * @param SubsidiaryEntity[] $subsidiaries
+     * @param UserEntity $user
+     * @return SubsidiaryEntity[]
+     */
+    protected function filterSubsidiariesByUser(array $subsidiaries, UserEntity $user): array
+    {
+        return array_filter($subsidiaries, function (SubsidiaryEntity $subsidiary) use ($user) {
+            return in_array($subsidiary->getId(), $user->getSubsidiaryIds());
+        });
     }
 }
