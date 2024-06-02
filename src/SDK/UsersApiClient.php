@@ -17,6 +17,7 @@ class UsersApiClient
     protected const CACHE_KEY_USERS        = 'usersApiUsers';
     protected const CACHE_KEY_USER         = 'usersApiUser_%s';
     protected const CACHE_KEY_SUBSIDIARIES = 'usersApiSubsidiaries';
+    protected const CACHE_KEY_SUBSIDIARY   = 'usersApiSubsidiarY_%s';
     protected const CACHE_TTL_USERS        = 0;
     protected const CACHE_TTL_SUBSIDIARIES = 0;
     protected const USERS_URI              = '/users';
@@ -235,6 +236,32 @@ class UsersApiClient
     }
 
     /**
+     * Get a single Subsidiary.
+     *
+     * @param string $subsidiaryId
+     * @return SubsidiaryEntity|null
+     * @throws InvalidArgumentException
+     * @throws UsersApiException
+     * @throws \Psr\Http\Client\ClientExceptionInterface
+     */
+    public function getSubsidiary(string $subsidiaryId): ?SubsidiaryEntity
+    {
+        $cachedSubsidiay = $this->userCacheService->getItem(sprintf(self::CACHE_KEY_SUBSIDIARY, $subsidiaryId));
+
+        if ($cachedSubsidiay->isHit()) {
+            return $cachedSubsidiay->get();
+        }
+
+        foreach ($this->fetchSubsidiariesFromApi() as $subsidiary) {
+            if ($subsidiary->getId() === $subsidiaryId) {
+                return $subsidiary;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Get the list of Subsidiaries, optionally filtered by User.
      *
      * @param bool $refreshCache If true, users are fetched from the API and the cache is refreshed
@@ -273,7 +300,7 @@ class UsersApiClient
             }
 
             // Cache miss
-            $subsidiaries = $this->fetchSubsidiariesFromApi($cachedSubsidiaries);
+            $subsidiaries = $this->fetchSubsidiariesFromApi();
 
             // Check if the result must be filtered by user
             return is_null($user) ?
@@ -286,12 +313,11 @@ class UsersApiClient
     }
 
     /**
-     * @param CacheItemInterface $cachedSubsidiaries
      * @return SubsidiaryEntity[]
      * @throws UsersApiException
      * @throws \Psr\Http\Client\ClientExceptionInterface
      */
-    protected function fetchSubsidiariesFromApi(CacheItemInterface $cachedSubsidiaries): array
+    protected function fetchSubsidiariesFromApi(): array
     {
         $this->loginToAuthServer();
 
@@ -315,10 +341,26 @@ class UsersApiClient
             $subsidiaries[] = $subsidiary;
         }
 
-        // Cache the Subsidiaries. If it's a users Subsidiaries, the TTL is shorter
+        // Cache the Subsidiaries
+        $cachedSubsidiaries = $this->userCacheService->getItem(self::CACHE_KEY_SUBSIDIARIES);
         $cachedSubsidiaries
             ->set($subsidiaries)
             ->expiresAfter(self::CACHE_TTL_SUBSIDIARIES);
+
+        $this->userCacheService->save($cachedSubsidiaries);
+
+        // Cache each subsidiary individually
+        foreach ($subsidiaries as $subsidiary) {
+            $cachedSubsidiary = $this->userCacheService->getItem(
+                sprintf(self::CACHE_KEY_SUBSIDIARY, $subsidiary->getId())
+            );
+
+            $cachedSubsidiary
+                ->set($subsidiary)
+                ->expiresAfter(self::CACHE_TTL_SUBSIDIARIES);
+
+            $this->userCacheService->save($cachedSubsidiary);
+        }
 
         $this->userCacheService->save($cachedSubsidiaries);
 
