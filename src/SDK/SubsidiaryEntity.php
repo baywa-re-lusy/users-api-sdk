@@ -2,12 +2,12 @@
 
 namespace BayWaReLusy\UsersAPI\SDK;
 
-use Laminas\Permissions\Acl\Role\RoleInterface;
+use Laminas\Permissions\Acl\Resource\ResourceInterface;
 
 /**
  * Class UserEntity
  */
-class SubsidiaryEntity implements SubsidiaryInterface, RoleInterface
+class SubsidiaryEntity implements SubsidiaryInterface, ResourceInterface
 {
     protected string $id;
     protected string $name;
@@ -51,7 +51,7 @@ class SubsidiaryEntity implements SubsidiaryInterface, RoleInterface
     /**
      * @inheritDoc
      */
-    public function getRoleId(): string
+    public function getResourceId(): string
     {
         return 'subsidiary_' . $this->getId();
     }
