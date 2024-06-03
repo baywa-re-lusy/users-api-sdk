@@ -4,7 +4,6 @@ namespace BayWaReLusy\UsersAPI\SDK;
 
 use Laminas\Diactoros\RequestFactory;
 use Laminas\Diactoros\Uri;
-use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Cache\InvalidArgumentException;
 use Psr\Http\Client\ClientExceptionInterface;
@@ -18,7 +17,7 @@ class UsersApiClient
     protected const CACHE_KEY_USERS        = 'usersApiUsers';
     protected const CACHE_KEY_USER         = 'usersApiUser_%s';
     protected const CACHE_KEY_SUBSIDIARIES = 'usersApiSubsidiaries';
-    protected const CACHE_KEY_SUBSIDIARY   = 'usersApiSubsidiarY_%s';
+    protected const CACHE_KEY_SUBSIDIARY   = 'usersApiSubsidiary_%s';
     protected const CACHE_TTL_USERS        = 0;
     protected const CACHE_TTL_SUBSIDIARIES = 0;
     protected const USERS_URI              = '/users';
@@ -156,6 +155,14 @@ class UsersApiClient
                     ->setSubsidiaryIds($userData['subsidiaryIds']);
 
                 $users[] = $user;
+
+                // Add user to cache
+                $cachedUser = $this->userCacheService->getItem(sprintf(self::CACHE_KEY_USER, $userData['id']));
+                $cachedUser
+                    ->expiresAfter(self::CACHE_TTL_USERS)
+                    ->set($user);
+
+                $this->userCacheService->save($cachedUser);
             }
 
             // Cache the Users

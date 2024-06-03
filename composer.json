@@ -20,7 +20,8 @@
         "phpstan/phpstan": "^1.9",
         "phpunit/phpunit": "^10.0",
         "guzzlehttp/guzzle": "^7.5",
-        "ramsey/uuid": "^4.7"
+        "ramsey/uuid": "^4.7",
+        "behat/behat": "^3.14"
     },
     "autoload": {
         "psr-4": {
