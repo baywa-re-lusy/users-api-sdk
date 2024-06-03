@@ -7,6 +7,7 @@ use Laminas\Diactoros\Uri;
 use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Cache\InvalidArgumentException;
+use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Http\Client\ClientInterface as HttpClient;
 use Symfony\Component\Console\Output\OutputInterface as Console;
@@ -240,13 +241,18 @@ class UsersApiClient
      *
      * @param string $subsidiaryId
      * @return SubsidiaryEntity|null
-     * @throws InvalidArgumentException
      * @throws UsersApiException
-     * @throws \Psr\Http\Client\ClientExceptionInterface
+     * @throws ClientExceptionInterface
      */
     public function getSubsidiary(string $subsidiaryId): ?SubsidiaryEntity
     {
-        $cachedSubsidiay = $this->userCacheService->getItem(sprintf(self::CACHE_KEY_SUBSIDIARY, $subsidiaryId));
+        try {
+            $cachedSubsidiay = $this->userCacheService->getItem(
+                sprintf(self::CACHE_KEY_SUBSIDIARY, $subsidiaryId)
+            );
+        } catch (InvalidArgumentException $e) {
+            throw new UsersApiException('Invalid Subsidiary ID');
+        }
 
         if ($cachedSubsidiay->isHit()) {
             return $cachedSubsidiay->get();
@@ -315,7 +321,7 @@ class UsersApiClient
     /**
      * @return SubsidiaryEntity[]
      * @throws UsersApiException
-     * @throws \Psr\Http\Client\ClientExceptionInterface
+     * @throws ClientExceptionInterface
      */
     protected function fetchSubsidiariesFromApi(): array
     {
