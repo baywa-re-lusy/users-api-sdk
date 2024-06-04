@@ -13,9 +13,9 @@ use Symfony\Component\Console\Output\OutputInterface as Console;
 
 class UsersApiClient
 {
+    public const CACHE_KEY_USERS           = 'usersApiUsers';
+    public const CACHE_KEY_USER            = 'usersApiUser_%s';
     protected const CACHE_KEY_API_TOKEN    = 'usersApiAccessToken';
-    protected const CACHE_KEY_USERS        = 'usersApiUsers';
-    protected const CACHE_KEY_USER         = 'usersApiUser_%s';
     protected const CACHE_KEY_SUBSIDIARIES = 'usersApiSubsidiaries';
     protected const CACHE_KEY_SUBSIDIARY   = 'usersApiSubsidiary_%s';
     protected const CACHE_TTL_USERS        = 0;
