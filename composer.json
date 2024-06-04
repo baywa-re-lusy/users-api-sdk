@@ -25,11 +25,7 @@
     },
     "autoload": {
         "psr-4": {
-            "BayWaReLusy\\UsersAPI\\SDK\\": "src/SDK/"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
+            "BayWaReLusy\\UsersAPI\\SDK\\": "src/SDK/",
             "BayWaReLusy\\UsersAPI\\Test\\": "tests"
         }
     }
