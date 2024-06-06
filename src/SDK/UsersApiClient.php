@@ -344,14 +344,10 @@ class UsersApiClient
 
         $response     = json_decode($response->getBody()->getContents(), true);
         $subsidiaries = [];
+        $hydrator     = new SubsidiaryHydrator();
 
         foreach ($response['_embedded']['subsidiaries'] as $subsidiaryData) {
-            $subsidiary = new SubsidiaryEntity();
-            $subsidiary
-                ->setId($subsidiaryData['id'])
-                ->setName($subsidiaryData['name']);
-
-            $subsidiaries[] = $subsidiary;
+            $subsidiaries[] = $hydrator->hydrate($subsidiaryData, new SubsidiaryEntity());
         }
 
         // Cache the Subsidiaries
