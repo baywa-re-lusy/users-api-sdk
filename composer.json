@@ -14,7 +14,8 @@
         "laminas/laminas-diactoros": "^2.24",
         "symfony/console": "^6.2",
         "laminas/laminas-permissions-acl": "^2.16",
-        "laminas/laminas-hydrator": "^4.15"
+        "laminas/laminas-hydrator": "^4.15",
+        "laminas/laminas-validator": "^2.0"
     },
     "require-dev": {
         "squizlabs/php_codesniffer": "^3.7",
