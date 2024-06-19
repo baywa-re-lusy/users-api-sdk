@@ -214,6 +214,16 @@ class UsersApiClient
             $request = $request->withHeader('Accept', 'application/json');
 
             $response = $this->httpClient->sendRequest($request);
+
+            // Check for errors
+            if ($response->getStatusCode() >= 400) {
+                if ($response->getStatusCode() === 404) {
+                    return null;
+                }
+
+                throw new \Exception(sprintf("Received status code %s from Users API.", $response->getStatusCode()));
+            }
+
             $response = json_decode($response->getBody()->getContents(), true);
 
             $user = new UserEntity();
