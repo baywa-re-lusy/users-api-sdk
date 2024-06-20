@@ -2,6 +2,7 @@
 
 namespace BayWaReLusy\UsersAPI\SDK;
 
+use BayWaReLusy\UserSubsidiaryModel\SubsidiaryInterface;
 use Laminas\Permissions\Acl\Resource\ResourceInterface;
 
 /**
