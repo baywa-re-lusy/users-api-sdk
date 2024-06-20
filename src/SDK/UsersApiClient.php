@@ -163,6 +163,12 @@ class UsersApiClient
                     ->set($user);
 
                 $this->userCacheService->save($cachedUser);
+
+                $this->console?->writeln(sprintf(
+                    "[%s] Cached User '%s'.",
+                    (new \DateTime())->format(\DateTimeInterface::RFC3339),
+                    $user->getUsername()
+                ));
             }
 
             // Cache the Users
@@ -173,7 +179,13 @@ class UsersApiClient
             $this->userCacheService->save($cachedUsers);
 
             $this->console?->writeln(sprintf(
-                "[%s] Fetched %s users from API.",
+                "[%s] Cached the User list, containing %s users.",
+                (new \DateTime())->format(\DateTimeInterface::RFC3339),
+                count($users)
+            ));
+
+            $this->console?->writeln(sprintf(
+                "[%s] Fetched & cached %s users from API.",
                 (new \DateTime())->format(\DateTimeInterface::RFC3339),
                 count($users)
             ));
@@ -379,6 +391,12 @@ class UsersApiClient
                 ->expiresAfter(self::CACHE_TTL_SUBSIDIARIES);
 
             $this->userCacheService->save($cachedSubsidiary);
+
+            $this->console?->writeln(sprintf(
+                "[%s] Cached Subsidiary '%s'.",
+                (new \DateTime())->format(\DateTimeInterface::RFC3339),
+                $subsidiary->getName()
+            ));
         }
 
         $this->userCacheService->save($cachedSubsidiaries);
