@@ -16,7 +16,7 @@
         "laminas/laminas-permissions-acl": "^2.16",
         "laminas/laminas-hydrator": "^4.15",
         "laminas/laminas-validator": "^2.0",
-        "baywa-re-lusy/user-subsidiary-model": "^0.1.0"
+        "baywa-re-lusy/user-subsidiary-model": "^1.0"
     },
     "require-dev": {
         "squizlabs/php_codesniffer": "^3.7",
