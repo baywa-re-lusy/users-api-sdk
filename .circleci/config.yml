@@ -16,7 +16,7 @@ composer_restore_cache: &composer_restore_cache
 jobs:
   build:
     docker:
-      - image: ${ACR_HOSTNAME_PD}/alpine-php81-apache-build:latest
+      - image: ${ACR_HOSTNAME_PD}/alpine-php82-build:2.2.0
         auth:
           username: ${ACR_LOGIN_PD}
           password: ${ACR_PASSWORD_PD}
@@ -40,7 +40,7 @@ jobs:
 
   static:
     docker:
-      - image: ${ACR_HOSTNAME_PD}/alpine-php81-apache-build:latest
+      - image: ${ACR_HOSTNAME_PD}/alpine-php82-build:2.2.0
         auth:
           username: ${ACR_LOGIN_PD}
           password: ${ACR_PASSWORD_PD}
@@ -66,7 +66,7 @@ jobs:
 
   phpunit:
     docker:
-      - image: ${ACR_HOSTNAME_PD}/alpine-php81-apache-build:latest
+      - image: ${ACR_HOSTNAME_PD}/alpine-php82-build:2.2.0
         auth:
           username: ${ACR_LOGIN_PD}
           password: ${ACR_PASSWORD_PD}
