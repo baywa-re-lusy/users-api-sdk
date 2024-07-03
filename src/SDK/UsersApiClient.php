@@ -2,23 +2,24 @@
 
 namespace BayWaReLusy\UsersAPI\SDK;
 
-use BayWaReLusy\JwtAuthentication\UserIdentity;
 use Laminas\Diactoros\RequestFactory;
 use Laminas\Diactoros\Uri;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Cache\InvalidArgumentException;
+use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Http\Client\ClientInterface as HttpClient;
 use Symfony\Component\Console\Output\OutputInterface as Console;
 
 class UsersApiClient
 {
+    public const CACHE_KEY_USERS           = 'usersApiUsers';
+    public const CACHE_KEY_USER            = 'usersApiUser_%s';
     protected const CACHE_KEY_API_TOKEN    = 'usersApiAccessToken';
-    protected const CACHE_KEY_USERS        = 'usersApiUsers';
-    protected const CACHE_KEY_USER         = 'usersApiUser_%s';
     protected const CACHE_KEY_SUBSIDIARIES = 'usersApiSubsidiaries';
-    protected const CACHE_TTL_USERS        = 600;
-    protected const CACHE_TTL_SUBSIDIARIES = 86400;
+    protected const CACHE_KEY_SUBSIDIARY   = 'usersApiSubsidiary_%s';
+    protected const CACHE_TTL_USERS        = 0;
+    protected const CACHE_TTL_SUBSIDIARIES = 0;
     protected const USERS_URI              = '/users';
     protected const SUBSIDIARIES_URI       = '/subsidiaries';
 
@@ -112,7 +113,7 @@ class UsersApiClient
             // Get the users from the cache
             $cachedUsers = $this->userCacheService->getItem(self::CACHE_KEY_USERS);
 
-            // If the cached users are still valid, return them
+            // If the cached users are still valid and if there is no forced refresh, return them
             if (!$refreshCache && $cachedUsers->isHit()) {
                 $cacheResult = $cachedUsers->get();
 
@@ -140,6 +141,7 @@ class UsersApiClient
             $response = json_decode($response->getBody()->getContents(), true);
             $users    = [];
 
+            // Loop over the result from the API and create User entities
             foreach ($response['_embedded']['users'] as $userData) {
                 $user = new UserEntity();
                 $user
@@ -154,9 +156,23 @@ class UsersApiClient
                     ->setSubsidiaryIds($userData['subsidiaryIds']);
 
                 $users[] = $user;
+
+                // Add user to cache
+                $cachedUser = $this->userCacheService->getItem(sprintf(self::CACHE_KEY_USER, $userData['id']));
+                $cachedUser
+                    ->expiresAfter(self::CACHE_TTL_USERS)
+                    ->set($user);
+
+                $this->userCacheService->save($cachedUser);
+
+                $this->console?->writeln(sprintf(
+                    "[%s] Cached User '%s'.",
+                    (new \DateTime())->format(\DateTimeInterface::RFC3339),
+                    $user->getUsername()
+                ));
             }
 
-            // Cache the Users
+            // Cache the list of Users
             $cachedUsers
                 ->set($users)
                 ->expiresAfter(self::CACHE_TTL_USERS);
@@ -164,7 +180,13 @@ class UsersApiClient
             $this->userCacheService->save($cachedUsers);
 
             $this->console?->writeln(sprintf(
-                "[%s] Fetched %s users from API.",
+                "[%s] Cached the User list, containing %s users.",
+                (new \DateTime())->format(\DateTimeInterface::RFC3339),
+                count($users)
+            ));
+
+            $this->console?->writeln(sprintf(
+                "[%s] Fetched & cached %s users from API.",
                 (new \DateTime())->format(\DateTimeInterface::RFC3339),
                 count($users)
             ));
@@ -205,6 +227,16 @@ class UsersApiClient
             $request = $request->withHeader('Accept', 'application/json');
 
             $response = $this->httpClient->sendRequest($request);
+
+            // Check for errors
+            if ($response->getStatusCode() >= 400) {
+                if ($response->getStatusCode() === 404) {
+                    return null;
+                }
+
+                throw new \Exception(sprintf("Received status code %s from Users API.", $response->getStatusCode()));
+            }
+
             $response = json_decode($response->getBody()->getContents(), true);
 
             $user = new UserEntity();
@@ -235,13 +267,44 @@ class UsersApiClient
     }
 
     /**
+     * Get a single Subsidiary.
+     *
+     * @param string $subsidiaryId
+     * @return SubsidiaryEntity|null
+     * @throws UsersApiException
+     * @throws ClientExceptionInterface
+     */
+    public function getSubsidiary(string $subsidiaryId): ?SubsidiaryEntity
+    {
+        try {
+            $cachedSubsidiay = $this->userCacheService->getItem(
+                sprintf(self::CACHE_KEY_SUBSIDIARY, $subsidiaryId)
+            );
+        } catch (InvalidArgumentException $e) {
+            throw new UsersApiException('Invalid Subsidiary ID');
+        }
+
+        if ($cachedSubsidiay->isHit()) {
+            return $cachedSubsidiay->get();
+        }
+
+        foreach ($this->fetchSubsidiariesFromApi() as $subsidiary) {
+            if ($subsidiary->getId() === $subsidiaryId) {
+                return $subsidiary;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Get the list of Subsidiaries, optionally filtered by User.
      *
      * @param bool $refreshCache If true, users are fetched from the API and the cache is refreshed
      * @return SubsidiaryEntity[]
      * @throws UsersApiException
      */
-    public function getSubsidiaries(bool $refreshCache = false): array
+    public function getSubsidiaries(bool $refreshCache = false, UserEntity $user = null): array
     {
         try {
             $this->console?->writeln(sprintf(
@@ -249,63 +312,112 @@ class UsersApiClient
                 (new \DateTime())->format(\DateTimeInterface::RFC3339)
             ));
 
-            $cacheKey = self::CACHE_KEY_SUBSIDIARIES;
-
-            // Get the subsidiaries from the cache
+            // Get the Cache item
+            $cacheKey           = self::CACHE_KEY_SUBSIDIARIES;
             $cachedSubsidiaries = $this->userCacheService->getItem($cacheKey);
 
-            // If the cached users are still valid, return them
-            if (!$refreshCache && $cachedSubsidiaries->isHit()) {
-                $cacheResult = $cachedSubsidiaries->get();
+            // Get Subsidiaries from Cache
+            if (!$refreshCache) {
+                // Cache hit
+                if ($cachedSubsidiaries->isHit()) {
+                    /** @var SubsidiaryEntity[] $cacheResult */
+                    $cacheResult = $cachedSubsidiaries->get();
 
-                $this->console?->writeln(sprintf(
-                    "[%s] Fetched %s subsidiaries from cache.",
-                    (new \DateTime())->format(\DateTimeInterface::RFC3339),
-                    count($cacheResult)
-                ));
+                    $this->console?->writeln(sprintf(
+                        "[%s] Fetched %s subsidiaries from cache.",
+                        (new \DateTime())->format(\DateTimeInterface::RFC3339),
+                        count($cacheResult)
+                    ));
 
-                return $cacheResult;
+                    return is_null($user) ?
+                        $cacheResult :
+                        $this->filterSubsidiariesByUser($cacheResult, $user);
+                }
             }
 
-            $this->loginToAuthServer();
+            // Cache miss
+            $subsidiaries = $this->fetchSubsidiariesFromApi();
 
-            $url = rtrim($this->usersApiUrl, '/') . self::SUBSIDIARIES_URI;
-
-            $request = $this->requestFactory->createRequest('GET', new Uri($url));
-            $request = $request->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
-            $request = $request->withHeader('Accept', 'application/json');
-
-            $response = $this->httpClient->sendRequest($request);
-
-            $response     = json_decode($response->getBody()->getContents(), true);
-            $subsidiaries = [];
-
-            foreach ($response['_embedded']['subsidiaries'] as $subsidiaryData) {
-                $subsidiary = new SubsidiaryEntity();
-                $subsidiary
-                    ->setId($subsidiaryData['id'])
-                    ->setName($subsidiaryData['name']);
-
-                $subsidiaries[] = $subsidiary;
-            }
-
-            // Cache the Subsidiaries. If it's a users Subsidiaries, the TTL is shorter
-            $cachedSubsidiaries
-                ->set($subsidiaries)
-                ->expiresAfter(self::CACHE_TTL_SUBSIDIARIES);
-
-            $this->userCacheService->save($cachedSubsidiaries);
-
-            $this->console?->writeln(sprintf(
-                "[%s] Fetched %s subsidiaries from API.",
-                (new \DateTime())->format(\DateTimeInterface::RFC3339),
-                count($subsidiaries)
-            ));
-
-            return $subsidiaries;
+            // Check if the result must be filtered by user
+            return is_null($user) ?
+                $subsidiaries :
+                $this->filterSubsidiariesByUser($subsidiaries, $user);
         } catch (\Throwable | InvalidArgumentException $e) {
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't retrieve the list of Subsidiaries.");
         }
+    }
+
+    /**
+     * @return SubsidiaryEntity[]
+     * @throws UsersApiException
+     * @throws ClientExceptionInterface
+     */
+    protected function fetchSubsidiariesFromApi(): array
+    {
+        $this->loginToAuthServer();
+
+        $url = rtrim($this->usersApiUrl, '/') . self::SUBSIDIARIES_URI;
+
+        $request = $this->requestFactory->createRequest('GET', new Uri($url));
+        $request = $request->withHeader('Authorization', sprintf("Bearer %s", $this->accessToken));
+        $request = $request->withHeader('Accept', 'application/json');
+
+        $response = $this->httpClient->sendRequest($request);
+
+        $response     = json_decode($response->getBody()->getContents(), true);
+        $subsidiaries = [];
+        $hydrator     = new SubsidiaryHydrator();
+
+        foreach ($response['_embedded']['subsidiaries'] as $subsidiaryData) {
+            $subsidiaries[] = $hydrator->hydrate($subsidiaryData, new SubsidiaryEntity());
+        }
+
+        // Cache the Subsidiaries
+        $cachedSubsidiaries = $this->userCacheService->getItem(self::CACHE_KEY_SUBSIDIARIES);
+        $cachedSubsidiaries
+            ->set($subsidiaries)
+            ->expiresAfter(self::CACHE_TTL_SUBSIDIARIES);
+
+        $this->userCacheService->save($cachedSubsidiaries);
+
+        // Cache each subsidiary individually
+        foreach ($subsidiaries as $subsidiary) {
+            $cachedSubsidiary = $this->userCacheService->getItem(
+                sprintf(self::CACHE_KEY_SUBSIDIARY, $subsidiary->getId())
+            );
+
+            $cachedSubsidiary
+                ->set($subsidiary)
+                ->expiresAfter(self::CACHE_TTL_SUBSIDIARIES);
+
+            $this->userCacheService->save($cachedSubsidiary);
+
+            $this->console?->writeln(sprintf(
+                "[%s] Cached Subsidiary '%s'.",
+                (new \DateTime())->format(\DateTimeInterface::RFC3339),
+                $subsidiary->getName()
+            ));
+        }
+
+        $this->console?->writeln(sprintf(
+            "[%s] Fetched %s subsidiaries from API.",
+            (new \DateTime())->format(\DateTimeInterface::RFC3339),
+            count($subsidiaries)
+        ));
+
+        return $subsidiaries;
+    }
+
+    /**
+     * @param SubsidiaryEntity[] $subsidiaries
+     * @param UserEntity $user
+     * @return SubsidiaryEntity[]
+     */
+    protected function filterSubsidiariesByUser(array $subsidiaries, UserEntity $user): array
+    {
+        return array_filter($subsidiaries, function (SubsidiaryEntity $subsidiary) use ($user) {
+            return in_array($subsidiary->getId(), $user->getSubsidiaryIds());
+        });
     }
 }

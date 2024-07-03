@@ -2,16 +2,18 @@
 
 namespace BayWaReLusy\UsersAPI\SDK;
 
+use BayWaReLusy\UserSubsidiaryModel\UserInterface;
+
 /**
  * Class UserEntity
  */
-class UserEntity
+class UserEntity implements UserInterface
 {
     protected string $id;
     protected string $username;
     protected string $email;
     protected bool $emailVerified;
-    protected ?\DateTime $created;
+    protected \DateTime $created;
     /** @var string[] */
     protected array $subsidiaryIds = [];
     /** @var string[] */
@@ -90,18 +92,18 @@ class UserEntity
     }
 
     /**
-     * @return \DateTime|null
+     * @return \DateTime
      */
-    public function getCreated(): ?\DateTime
+    public function getCreated(): \DateTime
     {
         return $this->created;
     }
 
     /**
-     * @param \DateTime|null $created
+     * @param \DateTime $created
      * @return UserEntity
      */
-    public function setCreated(?\DateTime $created): UserEntity
+    public function setCreated(\DateTime $created): UserEntity
     {
         $this->created = $created;
         return $this;
