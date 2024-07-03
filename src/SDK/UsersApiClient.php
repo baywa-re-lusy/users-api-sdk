@@ -113,7 +113,7 @@ class UsersApiClient
             // Get the users from the cache
             $cachedUsers = $this->userCacheService->getItem(self::CACHE_KEY_USERS);
 
-            // If the cached users are still valid, return them
+            // If the cached users are still valid and if there is no forced refresh, return them
             if (!$refreshCache && $cachedUsers->isHit()) {
                 $cacheResult = $cachedUsers->get();
 
@@ -141,6 +141,7 @@ class UsersApiClient
             $response = json_decode($response->getBody()->getContents(), true);
             $users    = [];
 
+            // Loop over the result from the API and create User entities
             foreach ($response['_embedded']['users'] as $userData) {
                 $user = new UserEntity();
                 $user
@@ -171,7 +172,7 @@ class UsersApiClient
                 ));
             }
 
-            // Cache the Users
+            // Cache the list of Users
             $cachedUsers
                 ->set($users)
                 ->expiresAfter(self::CACHE_TTL_USERS);
