@@ -399,8 +399,6 @@ class UsersApiClient
             ));
         }
 
-        $this->userCacheService->save($cachedSubsidiaries);
-
         $this->console?->writeln(sprintf(
             "[%s] Fetched %s subsidiaries from API.",
             (new \DateTime())->format(\DateTimeInterface::RFC3339),

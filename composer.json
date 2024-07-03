@@ -24,7 +24,8 @@
         "phpunit/phpunit": "^10.0",
         "guzzlehttp/guzzle": "^7.5",
         "ramsey/uuid": "^4.7",
-        "behat/behat": "^3.14"
+        "behat/behat": "^3.14",
+        "mockery/mockery": "^1.6"
     },
     "autoload": {
         "psr-4": {
