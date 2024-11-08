@@ -44,18 +44,34 @@ class SubsidiaryUserLinkContext implements Context
     }
 
     /**
+     * @Given User :userId is only linked to Subsidiary :subsidiaryId
+     */
+    public function userIsOnlyLinkedToSubsidiary(string $userId, string $subsidiaryId): void
+    {
+        $this->userIsLinkedToSubsidiary($userId, $subsidiaryId, true);
+    }
+
+    /**
      * @Given User :userId is linked to Subsidiary :subsidiaryId
      */
-    public function userIsLinkedToSubsidiary(string $userId, string $subsidiaryId): void
-    {
+    public function userIsLinkedToSubsidiary(
+        string $userId,
+        string $subsidiaryId,
+        bool $replaceSubsidiaries = false
+    ): void {
         // Find the user in the cache and add the Subsidiary to the allowed Subsidiaries list
         $cachedUser = $this->cache->getItem(sprintf(UsersApiClient::CACHE_KEY_USER, $userId));
 
         if ($cachedUser->isHit()) {
             /** @var UserEntity $user */
-            $user            = $cachedUser->get();
-            $subsidiaryIds   = $user->getSubsidiaryIds();
-            $subsidiaryIds[] = $subsidiaryId;
+            $user = $cachedUser->get();
+
+            if ($replaceSubsidiaries) {
+                $subsidiaryIds = [$subsidiaryId];
+            } else {
+                $subsidiaryIds   = $user->getSubsidiaryIds();
+                $subsidiaryIds[] = $subsidiaryId;
+            }
 
             $user->setSubsidiaryIds(array_unique($subsidiaryIds));
             $this->cache->save($cachedUser);
