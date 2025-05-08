@@ -304,7 +304,7 @@ class UsersApiClient
      * @return SubsidiaryEntity[]
      * @throws UsersApiException
      */
-    public function getSubsidiaries(bool $refreshCache = false, UserEntity $user = null): array
+    public function getSubsidiaries(bool $refreshCache = false, ?UserEntity $user = null): array
     {
         try {
             $this->console?->writeln(sprintf(

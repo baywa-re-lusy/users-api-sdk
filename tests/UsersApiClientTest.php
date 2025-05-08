@@ -78,14 +78,14 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(true));
+            ->willReturn(true);
         $usersCacheItemMock
             ->expects($this->never())
             ->method('set');
         $usersCacheItemMock
             ->expects($this->once())
             ->method('get')
-            ->willReturn($this->returnValue([
+            ->willReturn([
                 (new UserEntity())
                     ->setId('c84056a1-8d36-46c4-ae15-e3cb3db18ed2')
                     ->setEmail('john.doe@email.com')
@@ -100,7 +100,7 @@ class UsersApiClientTest extends TestCase
                     ->setUsername('jane.doe')
                     ->setRoles(['role2', 'role3'])
                     ->setSubsidiaryIds(['5', '6', '7']),
-            ]));
+            ]);
 
         $this->usersCacheMock
             ->shouldReceive('getItem')
@@ -242,7 +242,7 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
         $usersCacheItemMock
             ->expects($this->never())
             ->method('set');
@@ -281,7 +281,7 @@ class UsersApiClientTest extends TestCase
         $cacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
         $cacheItemMock
             ->expects($this->never())
             ->method('set');
@@ -296,7 +296,7 @@ class UsersApiClientTest extends TestCase
             ->expects($this->once())
             ->method('getItem')
             ->with('usersApiAccessToken')
-            ->will($this->returnValue($cacheItemMock));
+            ->willReturn($cacheItemMock);
         $this->tokenCacheMock
             ->expects($this->never())
             ->method('save');
@@ -306,7 +306,7 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
         $usersCacheItemMock
             ->expects($this->never())
             ->method('set');
@@ -351,7 +351,7 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
         $usersCacheItemMock
             ->expects($this->never())
             ->method('set');
@@ -498,7 +498,7 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
         $usersCacheItemMock
             ->expects($this->never())
             ->method('set');
@@ -545,21 +545,21 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(true));
+            ->willReturn(true);
         $usersCacheItemMock
             ->expects($this->never())
             ->method('set');
         $usersCacheItemMock
             ->expects($this->once())
             ->method('get')
-            ->willReturn($this->returnValue([
+            ->willReturn([
                 (new SubsidiaryEntity())
                     ->setId('1')
                     ->setName('Subsidiary 1'),
                 (new SubsidiaryEntity())
                     ->setId('2')
                     ->setName('Subsidiary 2'),
-            ]));
+            ]);
 
         $this->usersCacheMock
             ->shouldReceive('getItem')
@@ -598,14 +598,14 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(true));
+            ->willReturn(true);
         $usersCacheItemMock
             ->expects($this->never())
             ->method('set');
         $usersCacheItemMock
             ->expects($this->once())
             ->method('get')
-            ->willReturn($this->returnValue(
+            ->willReturn(
                 (new UserEntity())
                     ->setId('c84056a1-8d36-46c4-ae15-e3cb3db18ed2')
                     ->setEmail('john.doe@email.com')
@@ -613,7 +613,7 @@ class UsersApiClientTest extends TestCase
                     ->setUsername('john.doe')
                     ->setRoles(['role1', 'role2'])
                     ->setSubsidiaryIds(['3', '4', '5'])
-            ));
+            );
 
         $this->usersCacheMock
             ->shouldReceive('getItem')
@@ -712,7 +712,7 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
         $usersCacheItemMock
             ->expects($this->never())
             ->method('set');
@@ -751,7 +751,7 @@ class UsersApiClientTest extends TestCase
         $cacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
         $cacheItemMock
             ->expects($this->never())
             ->method('set');
@@ -766,7 +766,7 @@ class UsersApiClientTest extends TestCase
             ->expects($this->once())
             ->method('getItem')
             ->with('usersApiAccessToken')
-            ->will($this->returnValue($cacheItemMock));
+            ->willReturn($cacheItemMock);
         $this->tokenCacheMock
             ->expects($this->never())
             ->method('save');
@@ -776,7 +776,7 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
         $usersCacheItemMock
             ->expects($this->never())
             ->method('set');
@@ -821,7 +821,7 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
         $usersCacheItemMock
             ->expects($this->never())
             ->method('set');
@@ -987,7 +987,7 @@ class UsersApiClientTest extends TestCase
         $cacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
         $cacheItemMock
             ->expects($this->once())
             ->method('set')
@@ -1006,7 +1006,7 @@ class UsersApiClientTest extends TestCase
             ->expects($this->once())
             ->method('getItem')
             ->with('usersApiAccessToken')
-            ->will($this->returnValue($cacheItemMock));
+            ->willReturn($cacheItemMock);
         $this->tokenCacheMock
             ->expects($this->once())
             ->method('save')
@@ -1023,20 +1023,20 @@ class UsersApiClientTest extends TestCase
         $cacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(true));
+            ->willReturn(true);
         $cacheItemMock
             ->expects($this->never())
             ->method('set');
         $cacheItemMock
             ->expects($this->once())
             ->method('get')
-            ->willReturn($this->returnValue('access-token'));
+            ->willReturn('access-token');
 
         $this->tokenCacheMock
             ->expects($this->once())
             ->method('getItem')
             ->with('usersApiAccessToken')
-            ->will($this->returnValue($cacheItemMock));
+            ->willReturn($cacheItemMock);
         $this->tokenCacheMock
             ->expects($this->never())
             ->method('save');
@@ -1052,7 +1052,7 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
 
         $this->mockCachingOfUsers($usersCacheItemMock);
     }
@@ -1067,7 +1067,7 @@ class UsersApiClientTest extends TestCase
         $usersCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
         $usersCacheItemMock
             ->expects($this->once())
             ->method('set')
@@ -1109,7 +1109,7 @@ class UsersApiClientTest extends TestCase
         $subsidiariesCacheItemMock
             ->expects($this->once())
             ->method('isHit')
-            ->willReturn($this->returnValue(false));
+            ->willReturn(false);
 
         $this->mockCachingOfSubsidiaries($subsidiariesCacheItemMock);
     }
