@@ -211,7 +211,7 @@ class UsersApiClient
             // Get the users from the cache
             $cachedUser = $this->userCacheService->getItem(sprintf(self::CACHE_KEY_USER, $id));
 
-            // If the cached user are still valid, return it
+            // If the cached user is still valid, return it
             if ($cachedUser->isHit()) {
                 return $cachedUser->get();
             }
