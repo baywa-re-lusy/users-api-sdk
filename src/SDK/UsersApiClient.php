@@ -208,7 +208,7 @@ class UsersApiClient
     public function getUser(string $id): ?UserEntity
     {
         try {
-            // Get the users from the cache
+            // Get the user from the cache
             $cachedUser = $this->userCacheService->getItem(sprintf(self::CACHE_KEY_USER, $id));
 
             // If the cached user is still valid, return it
