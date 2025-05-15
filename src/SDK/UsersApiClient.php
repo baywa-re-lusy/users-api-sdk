@@ -252,7 +252,7 @@ class UsersApiClient
                 ->setSubsidiaryIds($response['subsidiaryIds']);
 
 
-            // Cache the Users
+            // Cache the User
             $cachedUser
                 ->set($user)
                 ->expiresAfter(self::CACHE_TTL_USERS);
