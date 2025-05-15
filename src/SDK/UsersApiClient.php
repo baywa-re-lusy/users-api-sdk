@@ -260,7 +260,7 @@ class UsersApiClient
             $this->userCacheService->save($cachedUser);
 
             return $user;
-        } catch (\Throwable | InvalidArgumentException $e) {
+        } catch (\Throwable $e) {
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't retrieve the list of Users.");
         }
