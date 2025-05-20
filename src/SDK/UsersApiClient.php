@@ -208,10 +208,10 @@ class UsersApiClient
     public function getUser(string $id): ?UserEntity
     {
         try {
-            // Get the users from the cache
+            // Get the user from the cache
             $cachedUser = $this->userCacheService->getItem(sprintf(self::CACHE_KEY_USER, $id));
 
-            // If the cached user are still valid, return it
+            // If the cached user is still valid, return it
             if ($cachedUser->isHit()) {
                 return $cachedUser->get();
             }
@@ -252,7 +252,7 @@ class UsersApiClient
                 ->setSubsidiaryIds($response['subsidiaryIds']);
 
 
-            // Cache the Users
+            // Cache the User
             $cachedUser
                 ->set($user)
                 ->expiresAfter(self::CACHE_TTL_USERS);
@@ -260,7 +260,7 @@ class UsersApiClient
             $this->userCacheService->save($cachedUser);
 
             return $user;
-        } catch (\Throwable | InvalidArgumentException $e) {
+        } catch (\Throwable $e) {
             $this->logger?->error($e->getMessage());
             throw new UsersApiException("Couldn't retrieve the list of Users.");
         }
