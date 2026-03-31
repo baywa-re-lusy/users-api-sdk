@@ -4,23 +4,13 @@ namespace BayWaReLusy\UsersAPI\SDK;
 
 use Laminas\Hydrator\ClassMethodsHydrator;
 
-class SubsidiaryHydrator
+/**
+ * @method SubsidiaryEntity hydrate(array $data, object $object)
+ */
+class SubsidiaryHydrator extends ClassMethodsHydrator
 {
-    private ClassMethodsHydrator $hydrator;
-
     public function __construct()
     {
-        $this->hydrator = new ClassMethodsHydrator(false);
-    }
-
-    public function hydrate(array $data, object $object): object
-    {
-        return $this->hydrator->hydrate($data, $object);
-    }
-
-    public function extract(object $object): array
-    {
-        $data = $this->hydrator->extract($object);
-        return $data;
+        parent::__construct(false);
     }
 }
