@@ -15,10 +15,10 @@ class SubsidiaryHydrator
 
     /**
      * @param array<mixed> $data
-     * @param object $object
+     * @param SubsidiaryEntity $object
      * @return SubsidiaryEntity
      */
-    public function hydrate(array $data, object $object): SubsidiaryEntity
+    public function hydrate(array $data, SubsidiaryEntity $object): SubsidiaryEntity
     {
         return $this->hydrator->hydrate($data, $object);
     }
