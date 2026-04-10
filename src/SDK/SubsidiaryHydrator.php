@@ -3,8 +3,9 @@
 namespace BayWaReLusy\UsersAPI\SDK;
 
 use Laminas\Hydrator\ClassMethodsHydrator;
+use Laminas\Hydrator\HydratorInterface;
 
-class SubsidiaryHydrator
+class SubsidiaryHydrator implements HydratorInterface
 {
     private ClassMethodsHydrator $hydrator;
 
