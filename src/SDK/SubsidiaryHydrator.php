@@ -19,7 +19,7 @@ class SubsidiaryHydrator implements HydratorInterface
      * @param SubsidiaryEntity $object
      * @return SubsidiaryEntity
      */
-    public function hydrate(array $data, SubsidiaryEntity $object): SubsidiaryEntity
+    public function hydrate(array $data, object $object): SubsidiaryEntity
     {
         return $this->hydrator->hydrate($data, $object);
     }
